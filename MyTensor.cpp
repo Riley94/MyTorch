@@ -9,13 +9,51 @@ Tensor::Tensor(const vector<int64_t>& shape) : shape(shape) {
 
 Tensor::Tensor(const vector<int64_t>& shape, const initializer_list<double>& values) : shape(shape) {
     int64_t totalSize = numElements(shape);
-    assert(values.size() == totalSize);
+    assert(static_cast<int64_t>(values.size()) == totalSize);
     data = values;
 }
 
-Tensor::Tensor(const vector<int64_t>& shape, const std::vector<double>& data)
+Tensor::Tensor(const vector<int64_t>& shape, const vector<double>& data)
     : shape(shape), data(data) {
-    assert(shape[0] * shape[1] == data.size()); // Ensuring data matches the shape
+    assert(shape[0] * shape[1] == static_cast<int64_t>(data.size())); // Ensuring data matches the shape
+}
+
+
+void Tensor::parseList(const py::list& list, size_t depth) {
+    if (depth == shape.size()) {
+        shape.push_back(py::len(list));
+    } else {
+        if (shape[depth] != static_cast<int64_t>(py::len(list))) {
+            throw std::runtime_error("Inconsistent shape in nested list");
+        }
+    }
+
+    for (auto item : list) {
+        if (py::isinstance<py::list>(item)) {
+            parseList(item.cast<py::list>(), depth + 1);  // Recursive call for nested lists
+        } else {
+            data.push_back(item.cast<double>());
+        }
+    }
+}
+
+// Constructor for Python lists
+Tensor::Tensor(const py::list& list) {
+    cout << "Constructing tensor from Python list" << endl;
+    parseList(list);
+    cout << "Shape: ";
+    for (auto s : shape) {
+        cout << s << " ";
+    }
+    cout << endl;
+}
+
+// Constructor for NumPy arrays
+Tensor::Tensor(const py::array_t<double>& np_array) {
+    auto buffer = np_array.request();
+    double* ptr = static_cast<double*>(buffer.ptr);
+    shape = vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
+    data = vector<double>(ptr, ptr + buffer.size);
 }
 
 int64_t Tensor::numElements(const vector<int64_t>& shape) const {
@@ -29,7 +67,7 @@ int64_t Tensor::numElements(const vector<int64_t>& shape) const {
 int64_t Tensor::getFlatIndex(const vector<int64_t>& indices) const {
     assert(indices.size() == shape.size());
     int64_t flatIndex = 0;
-    for (long long unsigned int i = 0; i < indices.size(); ++i) {
+    for (unsigned int i = 0; i < indices.size(); ++i) {
         assert(indices[i] >= 0 && indices[i] < shape[i]);
         flatIndex = flatIndex * shape[i] + indices[i];
     }
@@ -90,7 +128,20 @@ Tensor Tensor::operator-() const {
     return result;
 }
 
+void checkDimensions(const vector<int64_t>& shape, const vector<int64_t>& other_shape) {
+    if (shape[1] != other_shape[0]) {
+        stringstream ss;
+        ss << "Dimensions mismatch for dot product. " << shape[1] << " != " << other_shape[0];
+        throw runtime_error(ss.str());
+    }
+}
+
 Tensor Tensor::dot(const Tensor& other) const {
+    try {
+        checkDimensions(shape, other.shape);
+    } catch (const runtime_error& e) {
+        cerr << e.what() << endl;
+    }
     assert(shape[1] == other.shape[0]); // Columns of first must match rows of second
 
     vector<int64_t> result_shape = {shape[0], other.shape[1]};
@@ -136,22 +187,22 @@ void Tensor::printRecursive(const vector<int64_t>& indices, size_t dim) const {
     }
 }
 
-// Print vector using << overloading (for shape). Source: https://academichelp.net/coding/cpp/how-to-print-a-vector-in-cpp.html#:~:text=To%20print%20a%20vector%20in%20C%2B%2B%2C%20you%20can%20use,each%20element%20in%20the%20vector.
 template <typename ele_type>
-std::ostream& operator<<(std::ostream& os, const std::vector<ele_type>& vect_name) {
-    for (auto itr : vect_name) {
-        if (itr == vect_name.back()) {
-            os << itr;
-        } else {
-            os << itr << " ";
+ostream& operator<<(ostream& os, const vector<ele_type>& vect_name) {
+    os << "[";
+    for (size_t i = 0; i < vect_name.size(); ++i) {
+        os << vect_name[i];
+        if (i != vect_name.size() - 1) {
+            os << " "; // Space between elements
         }
     }
+    os << "]";
     return os; // Return the ostream object to allow chaining
 }
 
 // Prints the tensor in a structured format
 void Tensor::print() const {
-    cout << "Tensor with shape: [" << shape << "]"<< endl;
+    cout << "Tensor with shape: " << shape << endl;
     printRecursive({}, 0);
     cout << endl;
 }

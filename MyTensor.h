@@ -2,6 +2,7 @@
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <iostream>
 #include <cassert>
 #include <initializer_list>
@@ -32,6 +33,12 @@ public:
 
     // accepting vectors
     Tensor(const vector<int64_t>& shape, const std::vector<double>& data);
+
+    // accepting python lists
+    Tensor(const py::list& data);
+
+    // accepting numpy arrays
+    Tensor(const py::array_t<double>& data);
 
     // Get the shape of the tensor
     vector<int64_t> getShape() const { return shape; }
@@ -72,6 +79,7 @@ public:
 
 private:
     void printRecursive(const vector<int64_t>& indices, size_t dim) const;
+    void parseList(const py::list& list, size_t depth = 0);
     
 };
 
@@ -79,6 +87,11 @@ private:
 PYBIND11_MODULE(MyTensor, m) {
     py::class_<Tensor>(m, "Tensor")
         .def(py::init<const std::vector<int64_t>&, const std::vector<double>&>())
+        .def(py::init<const py::array_t<double>&>()) // Use specific type here
+        .def(py::init<const py::list&>())
         .def("innerProduct", &Tensor::dot)
+        .def("__add__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator+))
+        .def("__mul__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator*))
+        .def("__sub__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator-))
         .def("print", &Tensor::print);
 }
