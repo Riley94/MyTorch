@@ -70,7 +70,7 @@ public:
     // Tensor dot product
     Tensor dot(const Tensor& other) const;
 
-    //Tensor transpose() const;
+    Tensor transpose() const;
 
     //Tensor outer_product(const Tensor& other) const;
 
@@ -93,5 +93,8 @@ PYBIND11_MODULE(MyTensor, m) {
         .def("__add__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator+))
         .def("__mul__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator*))
         .def("__sub__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator-))
+        .def("__truediv__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator/))
+        .def("__neg__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator-))
+        .def("transpose", static_cast<Tensor (Tensor::*)() const>(&Tensor::transpose))
         .def("print", &Tensor::print);
 }

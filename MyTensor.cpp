@@ -207,6 +207,24 @@ void Tensor::print() const {
     cout << endl;
 }
 
+// Implement the transpose method
+Tensor Tensor::transpose() const {
+    if (shape.size() != 2) {
+        throw runtime_error("Transpose is only supported for 2D tensors.");
+    }
+
+    vector<int64_t> transposed_shape = {shape[1], shape[0]};
+    Tensor result(transposed_shape);
+
+    for (int64_t i = 0; i < shape[0]; ++i) {
+        for (int64_t j = 0; j < shape[1]; ++j) {
+            result.data[j * shape[0] + i] = data[i * shape[1] + j];
+        }
+    }
+
+    return result;
+}
+
 // For testing the Tensor class
 int main() {
     // Create a 2x3 tensor initialized with zeros

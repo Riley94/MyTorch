@@ -45,3 +45,6 @@ subt.print()
 
 print("Result of multiplication (element-wise):")
 mult.print()
+
+print("Result of transpose:")
+mult.transpose().print()
