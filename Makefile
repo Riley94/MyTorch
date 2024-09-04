@@ -11,7 +11,7 @@ CXXFLAGS := -O3 -Wall -shared -std=c++17 -fPIC $(PYTHON_INCLUDES)
 TARGET := MyTensor$(PYTHON_EXT_SUFFIX)
 
 # Source files
-SRC := MyTensor.cpp
+SRC := csrc/MyTensor.cpp
 
 # Default target
 all: $(TARGET)
