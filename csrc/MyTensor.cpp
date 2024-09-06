@@ -1,6 +1,6 @@
 #include "MyTensor.h"
 #include "helpers.h"
-#include <random>
+#include "pybind_includes.h"
 
 using namespace std;
 
@@ -151,63 +151,45 @@ Tensor Tensor::dot(const Tensor& other) const {
     return Tensor(result_shape, result_data);
 }
 
-Tensor Tensor::ones_like(const Tensor& other) {
-    return Tensor(other.shape, vector<double>(other.size(), 1.0));
-}
-
-Tensor Tensor::zeros_like(const Tensor& other) {
-    return Tensor(other.shape);
-}
-
-Tensor Tensor::rand_like(const Tensor& other) {
-    vector<double> random_data(other.size());
-
-    // Create a random number generator
-    random_device rd;  // Seed for randomness
-    mt19937 gen(rd()); // Mersenne Twister generator
-    uniform_real_distribution<double> dis(0.0, 1.0); // Uniform distribution between 0 and 1
-
-    for (int64_t i = 0; i < other.size(); ++i) {
-        random_data[i] = dis(gen); // Generate random number
-    }
-
-    return Tensor(other.shape, random_data);
-}
-
 // Recursive function to print tensor data with appropriate formatting
-void Tensor::printRecursive(const vector<int64_t>& indices, size_t dim) const {
+void Tensor::printRecursive(ostream& os, const vector<int64_t>& indices, size_t dim) const {
     if (dim == shape.size() - 1) {
         // Base case: printing the innermost dimension
-        cout << "[";
+        os << "[";
         for (int64_t i = 0; i < shape[dim]; ++i) {
             vector<int64_t> new_indices = indices;
             new_indices.push_back(i);
-            cout << data[getFlatIndex(new_indices)];
+            os << data[getFlatIndex(new_indices)];
             if (i < shape[dim] - 1) {
-                cout << ", ";
+                os << ", ";
             }
         }
-        cout << "]";
+        os << "]";
     } else {
         // Recursive case: printing outer dimensions
-        cout << "[";
+        os << "[";
         for (int64_t i = 0; i < shape[dim]; ++i) {
             vector<int64_t> new_indices = indices;
             new_indices.push_back(i);
-            printRecursive(new_indices, dim + 1);
+            printRecursive(os, new_indices, dim + 1);
             if (i < shape[dim] - 1) {
-                cout << ",\n";
+                os << ",\n";
             }
         }
-        cout << "]";
+        os << "]";
     }
 }
 
 // Prints the tensor in a structured format
-void Tensor::print() const {
-    cout << "Tensor with shape: " << shape << endl;
-    printRecursive({}, 0);
-    cout << endl;
+string Tensor::repr() const {
+    ostringstream oss;
+    oss << "Tensor(shape=[" << shape;
+    oss << "], dtype=float32)\n"; // Assuming float32 for simplicity
+
+    // Print the tensor data
+    vector<int64_t> indices(shape.size(), 0);
+    printRecursive(oss, {}, 0);  // Use a recursive method to print multi-dimensional arrays
+    return oss.str();
 }
 
 // Implement the transpose method
@@ -226,69 +208,4 @@ Tensor Tensor::transpose() const {
     }
 
     return result;
-}
-
-// For testing the Tensor class
-int main() {
-    // Create a 2x3 tensor initialized with zeros
-    Tensor tensor1({2, 3});
-    cout << "Tensor 1: (A)" << endl;
-    tensor1.print(); // Should print: [[0 0 0],
-                     //               [0 0 0]]
-
-    cout << "Tensor 2: (B)" << endl;
-    // Create a 2x3 tensor with specific values
-    Tensor tensor2({2, 3}, {1, 2, 3, 4, 5, 6});
-    tensor2.print(); // Should print: [[1 2 3],
-                     //               [4 5 6]]
-
-    // Element-wise addition
-    cout << "Tensor 3: (A + B)" << endl;
-    Tensor tensor3 = tensor1 + tensor2;
-    tensor3.print(); // Should print: [[1 2 3],
-                     //               [4 5 6]]
-
-    // Element-wise multiplication
-    cout << "Tensor 4: (B * B)" << endl;
-    Tensor tensor4 = tensor2 * tensor2;
-    tensor4.print(); // Should print: [[1 4 9],
-                     //               [16 25 36]]
-
-    // Element-wise subtraction
-    cout << "Tensor 5: (B - A)" << endl;
-    Tensor tensor5 = tensor2 - tensor1;
-    tensor5.print(); // Should print: [[1 2 3],
-                     //               [4 5 6]]
-
-    // Element-wise division
-    cout << "Tensor 6: (B / B)" << endl;
-    Tensor tensor6 = tensor2 / tensor2;
-    tensor6.print(); // Should print: [[1 1 1],
-                     //               [1 1 1]]
-
-    // Unary negation
-    cout << "Tensor 7: (-B)" << endl;
-    Tensor tensor7 = -tensor2;
-    tensor7.print(); // Should print: [[-1 -2 -3],
-                     //               [-4 -5 -6]]
-
-    cout << "Tensor 8: (C)" << endl;
-    // Create a 3x2 tensor with specific values
-    Tensor tensor8({3, 2}, {1, 2, 3, 4, 5, 6});
-    tensor8.print(); // Should print: [[1 2],
-                     //               [3 4],
-                     //               [5 6]]
-
-    // Dot product
-    cout << "Tensor 8: (B . C)" << endl;
-    Tensor tensor9 = tensor2.dot(tensor8);
-    tensor9.print(); // Should print: [[22 28],
-                     //               [49 64]]
-
-    // Accessing an element
-    cout << tensor2({1, 2}) << endl; // Should print: 6
-    tensor2({1, 2}) = 10;            // Setting the element at (1, 2) to 10
-    tensor2.print();                 // Should print: 1 2 3 4 5 10
-
-    return 0;
 }
