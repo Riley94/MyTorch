@@ -4,7 +4,6 @@ MyTorch is intended as an educational project for myself wherein I attempt to re
 
 ## Table of Contents
 
-- [Overview](#overview)
 - [Features](#features)
 - [Dependencies](#dependencies)
 - [Installation](#installation)
@@ -31,12 +30,16 @@ To build and use MyTensor, you need the following dependencies:
 - **Pybind11**: A lightweight header-only library for exposing C++ types in Python and vice versa.
 - **NumPy**: A fundamental package for scientific computing with Python.
 
+For testing you will need:
+
+- **GoogleTest (gtest)**: latest version
+
 ## Installation
 ### The following assumes you're using Linux
 
 1. **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/MyTensor.git
+    git clone https://github.com/Riley94/MyTorch.git
     cd MyTorch
     ```
 
@@ -56,16 +59,10 @@ To build and use MyTensor, you need the following dependencies:
 
 3. **Install Dependencies**:
 
-    Make sure you have Python and NumPy installed:
+    Make sure you have Pybind and NumPy installed:
 
     ```bash
-    pip install numpy
-    ```
-
-    Install Pybind11:
-
-    ```bash
-    pip install pybind11
+    pip install numpy pybind11
     ```
 
 4. **Build the Project**:
@@ -77,6 +74,12 @@ To build and use MyTensor, you need the following dependencies:
     ```
 
     This will generate the shared library file `MyTorch.<extension>` that can be imported in Python.
+
+5. **Use the Test Suite**
+
+   ```bash
+   make test
+   ```
 
 ## Usage
 
@@ -93,7 +96,7 @@ tensor2 = MyTorch.Tensor([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]])
 result = tensor1 + tensor2
 
 # Print the result
-result.print()
+print(result)
 
 # Perform inner product
 dot_product = tensor1.innerProduct(tensor2)
