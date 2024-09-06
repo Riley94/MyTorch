@@ -34,7 +34,6 @@ class TensorTest : public testing::Test {
 
 // Example test case: Test Tensor Addition
 TEST(TensorTest, Addition) {
-    cout << "Addition test" << endl;
     Tensor tensor1({2, 2}, {1.0, 2.0, 3.0, 4.0});
     Tensor tensor2({2, 2}, {1.0, 1.0, 1.0, 1.0});
     Tensor result = tensor1 + tensor2;
@@ -46,7 +45,6 @@ TEST(TensorTest, Addition) {
 
 // Test Tensor Multiplication
 TEST(TensorTest, Multiplication) {
-    cout << "Mult test" << endl;
     Tensor tensor1({2, 2}, {1.0, 2.0, 3.0, 4.0});
     Tensor tensor2({2, 2}, {5.0, 6.0, 7.0, 8.0});
     Tensor result = tensor1 * tensor2;
@@ -56,9 +54,51 @@ TEST(TensorTest, Multiplication) {
     EXPECT_EQ(result.get_data(), expected_data) << "Multiplication failed";
 }
 
+// Test Tensor Subtraction
+TEST(TensorTest, Subtraction) {
+    Tensor tensor1({2, 2}, {1.0, 2.0, 3.0, 4.0});
+    Tensor tensor2({2, 2}, {1.0, 1.0, 1.0, 1.0});
+    Tensor result = tensor1 - tensor2;
+
+    // Check if result matches expected values
+    vector<double> expected_data = {0.0, 1.0, 2.0, 3.0};
+    EXPECT_EQ(result.get_data(), expected_data) << "Subtraction failed";
+}
+
+// Test Tensor Division
+TEST(TensorTest, Division) {
+    Tensor tensor1({2, 2}, {1.0, 2.0, 3.0, 4.0});
+    Tensor tensor2({2, 2}, {1.0, 1.0, 1.0, 1.0});
+    Tensor result = tensor1 / tensor2;
+
+    // Check if result matches expected values
+    vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
+    EXPECT_EQ(result.get_data(), expected_data) << "Division failed";
+}
+
+// Test Tensor Negation
+TEST(TensorTest, Negation) {
+    Tensor tensor1({2, 2}, {1.0, 2.0, 3.0, 4.0});
+    Tensor result = -tensor1;
+
+    // Check if result matches expected values
+    vector<double> expected_data = {-1.0, -2.0, -3.0, -4.0};
+    EXPECT_EQ(result.get_data(), expected_data) << "Negation failed";
+}
+
+// Test Tensor Dot Product
+TEST(TensorTest, DotProduct) {
+    Tensor tensor1({2, 2}, {1.0, 2.0, 3.0, 4.0});
+    Tensor tensor2({2, 2}, {5.0, 6.0, 7.0, 8.0});
+    Tensor result = tensor1.dot(tensor2);
+
+    // Check if result matches expected values
+    vector<double> expected_data = {19.0, 22.0, 43.0, 50.0};
+    EXPECT_EQ(result.get_data(), expected_data) << "Dot product failed";
+}
+
 // GoogleTest entry point
 int main(int argc, char **argv) {
-    cout << "Hello, World!" << endl;
     testing::InitGoogleTest(&argc, argv);  // Initialize GoogleTest
     return RUN_ALL_TESTS();                  // Run all test cases
 }
