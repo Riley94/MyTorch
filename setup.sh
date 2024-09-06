@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Update package list
+sudo apt update
+
+# Ensure that the software-properties-common package is installed to be able to manage PPAs
+sudo apt install software-properties-common
+
+# common repository for alternate python versions
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+
+# Install Python 3.11, development libraries, and venv
+sudo apt install -y python3.11 python3.11-dev python3.11-venv
+
+# Install CMake
+sudo apt install -y cmake
+
+# Install GoogleTest and move to the appropriate directory
+sudo apt install -y libgtest-dev
+cd /usr/src/gtest
+sudo cmake .
+sudo make
+sudo mv lib/*.a /usr/lib/
+
+# Go back to the original directory ~/MyTorch
+cd ~/MyTorch
+
+# Create and activate a Python 3.11 virtual environment
+python3.11 -m venv .
+source ./bin/activate
+
+# Output a success message
+echo "Python 3.11 environment is ready and activated."
