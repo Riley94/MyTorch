@@ -54,6 +54,8 @@ public:
     // Tensor multiplication (element-wise)
     Tensor operator*(const Tensor& other) const;
 
+    Tensor operator*(const double& other) const;
+
     // Tensor subtraction (element-wise)
     Tensor operator-(const Tensor& other) const;
 
@@ -62,6 +64,12 @@ public:
 
     // Unary negation
     Tensor operator-() const;
+
+    double& operator[](int64_t index);
+    const double& operator[](int64_t index) const;
+
+    Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
+    Tensor getitem(const py::object& obj) const;
 
     // Tensor dot product
     Tensor dot(const Tensor& other) const;
