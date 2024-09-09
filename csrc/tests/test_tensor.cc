@@ -116,19 +116,19 @@ TEST_F(TensorTest, Transpose) {
 TEST_F(TensorTest, InvalidShapeAddition) {
     
     // This should throw an assertion failure due to shape mismatch
-    EXPECT_THROW(tensor1 + tensor3, std::runtime_error);
+    EXPECT_THROW(tensor1 + tensor3, runtime_error);
 }
 
 // Test Invalid Shape for Dot Product
 TEST_F(TensorTest, InvalidShapeDotProduct) {
     // This should throw an assertion failure due to incompatible shapes for dot product
-    EXPECT_THROW(tensor1.dot(tensor3), std::runtime_error);
+    EXPECT_THROW(tensor1.dot(tensor3), runtime_error);
 }
 
 // Test Tensor Initialization from Python List
 TEST_F(TensorTest, PythonListInitialization) {
     py::scoped_interpreter guard{}; // Initialize Python interpreter
-    py::list list = py::cast(std::vector<std::vector<double>>{{1.0, 2.0}, {3.0, 4.0}});
+    py::list list = py::cast(vector<vector<double>>{{1.0, 2.0}, {3.0, 4.0}});
     Tensor tensor(list);
 
     // Check if result matches expected values
@@ -143,6 +143,13 @@ TEST_F(TensorTest, EmptyTensorInitialization) {
     // Check if the data is empty and shape is empty
     EXPECT_EQ(tensor.get_data().size(), 0) << "Empty tensor data size should be 0";
     EXPECT_EQ(tensor.get_shape().size(), 0) << "Empty tensor shape size should be 0";
+}
+
+TEST_F(TensorTest, OneDTensorInit) {
+    Tensor tensor({1}, {1.0});
+
+    EXPECT_EQ(tensor.get_data().size(), 1) << "1D tensor data size should be 1";
+    EXPECT_EQ(tensor.get_shape().size(), 1) << "1D tensor shape size should be 1";
 }
 
 // GoogleTest entry point

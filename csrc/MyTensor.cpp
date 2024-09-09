@@ -27,7 +27,7 @@ void Tensor::parseList(const py::list& list, size_t depth) {
         shape.push_back(py::len(list));
     } else {
         if (shape[depth] != static_cast<int64_t>(py::len(list))) {
-            throw std::runtime_error("Inconsistent shape in nested list");
+            throw runtime_error("Inconsistent shape in nested list");
         }
     }
 
@@ -60,6 +60,9 @@ Tensor::Tensor(const py::array_t<double>& np_array) {
 }
 
 int64_t Tensor::numElements(const vector<int64_t>& shape) const {
+    if (shape.empty()) {
+        return 0;
+    }
     int64_t totalSize = 1;
     for (int64_t s : shape) {
         totalSize *= s;
@@ -124,16 +127,16 @@ Tensor Tensor::getitem(const py::object& obj) const {
         py::ssize_t start, stop, step, length;
         py::slice slice = obj.cast<py::slice>();
         if (!slice.compute(shape[0], &start, &stop, &step, &length)) {
-            throw std::runtime_error("Invalid slice");
+            throw runtime_error("Invalid slice");
         }
         // Implement slicing logic here for 1D slices
-        std::vector<double> result_data(length);
+        vector<double> result_data(length);
         for (int64_t i = start; i < stop; i += step) {
             result_data[(i - start) / step] = data[i];
         }
         return Tensor({length}, result_data);
     }
-    throw std::runtime_error("Invalid indexing type");
+    throw runtime_error("Invalid indexing type");
 }
 
 // Overloaded method for two arguments indexing (e.g., tensor[0, 1] or tensor[:, 0])
@@ -145,7 +148,7 @@ Tensor Tensor::slice(const py::object& row_obj, const py::object& col_obj) const
     if (py::isinstance<py::slice>(row_obj)) {
         py::slice row_slice = row_obj.cast<py::slice>();
         if (!row_slice.compute(shape[0], &row_start, &row_stop, &row_step, &row_length)) {
-            throw std::runtime_error("Invalid row slice");
+            throw runtime_error("Invalid row slice");
         }
     } else if (py::isinstance<py::int_>(row_obj)) {
         row_start = row_obj.cast<int64_t>();
@@ -153,14 +156,14 @@ Tensor Tensor::slice(const py::object& row_obj, const py::object& col_obj) const
         row_step = 1;
         row_length = 1;
     } else {
-        throw std::runtime_error("Invalid row object: expected slice or int");
+        throw runtime_error("Invalid row object: expected slice or int");
     }
 
     // Handle col slicing or single index
     if (py::isinstance<py::slice>(col_obj)) {
         py::slice col_slice = col_obj.cast<py::slice>();
         if (!col_slice.compute(shape[1], &col_start, &col_stop, &col_step, &col_length)) {
-            throw std::runtime_error("Invalid col slice");
+            throw runtime_error("Invalid col slice");
         }
     } else if (py::isinstance<py::int_>(col_obj)) {
         col_start = col_obj.cast<int64_t>();
@@ -168,7 +171,7 @@ Tensor Tensor::slice(const py::object& row_obj, const py::object& col_obj) const
         col_step = 1;
         col_length = 1;
     } else {
-        throw std::runtime_error("Invalid col object: expected slice or int");
+        throw runtime_error("Invalid col object: expected slice or int");
     }
 
     // Create a result tensor for the sliced portion
@@ -186,7 +189,10 @@ Tensor Tensor::slice(const py::object& row_obj, const py::object& col_obj) const
 }
 
 Tensor Tensor::operator+(const Tensor& other) const {
-    assert(shape == other.shape);
+    if (shape != other.shape) {
+        throw runtime_error("Shape mismatch for addition");
+    }
+
     Tensor result(shape);
     for (int64_t i = 0; i < size(); ++i) {
         result.data[i] = this->data[i] + other.data[i];
@@ -240,12 +246,7 @@ Tensor Tensor::operator-() const {
 
 
 Tensor Tensor::dot(const Tensor& other) const {
-    try {
-        checkDimensions(shape, other.shape);
-    } catch (const runtime_error& e) {
-        cerr << e.what() << endl;
-    }
-    assert(shape[1] == other.shape[0]); // Columns of first must match rows of second
+    checkDimensions(shape, other.shape);
 
     vector<int64_t> result_shape = {shape[0], other.shape[1]};
     vector<double> result_data(result_shape[0] * result_shape[1], 0.0);
