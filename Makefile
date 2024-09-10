@@ -10,7 +10,7 @@ CXX := g++
 CXXFLAGS := -I csrc/include -O0 -g -Wall -shared -std=c++17 -fPIC $(PYBIND_INCLUDES)
 
 # Target
-TARGET := MyTorch$(PYTHON_EXT_SUFFIX)
+TARGET := MyTorchCPP$(PYTHON_EXT_SUFFIX)
 
 # Source files
 SOURCES = csrc/MyTensor.cpp csrc/MyTorch.cpp
