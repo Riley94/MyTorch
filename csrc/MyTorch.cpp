@@ -13,8 +13,7 @@ Tensor rand_like(const Tensor& other);
 PYBIND11_MODULE(MyTorch, m) {
     py::class_<Tensor>(m, "Tensor")
         .def(py::init<const vector<int64_t>&, const vector<double>&>())
-        .def(py::init<const py::array_t<double>&>()) // Use specific type here
-        .def(py::init<const py::list&>())
+        .def(py::init<const py::object&>())
         .def("innerProduct", &Tensor::dot)
         .def("__add__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator+))
         // Scalar multiplication

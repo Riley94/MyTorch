@@ -30,11 +30,8 @@ public:
     // accepting vectors
     Tensor(const vector<int64_t>& shape, const vector<double>& data);
 
-    // accepting python lists
-    Tensor(const py::list& data);
-
-    // accepting numpy arrays
-    Tensor(const py::array_t<double>& data);
+    // python objects
+    Tensor(const py::object& obj);
 
     // Get the shape of the tensor
     vector<int64_t> getShape() const { return shape; }

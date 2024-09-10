@@ -23,6 +23,14 @@ Tensor::Tensor(const vector<int64_t>& shape, const vector<double>& data)
 }
 
 void Tensor::parseList(const py::list& list, size_t depth) {
+    // if list is empty
+    if (py::len(list) == 0) {
+        if (depth == 0) {
+            // This is the first level and it's an empty list, so the shape is empty
+            shape.clear();
+        }
+        return;
+    }
     if (depth == shape.size()) {
         shape.push_back(py::len(list));
     } else {
@@ -40,23 +48,29 @@ void Tensor::parseList(const py::list& list, size_t depth) {
     }
 }
 
-// Constructor for Python lists
-Tensor::Tensor(const py::list& list) {
-    cout << "Constructing tensor from Python list" << endl;
-    parseList(list);
-    cout << "Shape: ";
-    for (auto s : shape) {
-        cout << s << " ";
+// Python objects
+Tensor::Tensor(const py::object& obj) {
+    // Handle case where a list is passed
+    if (py::isinstance<py::list>(obj)) {
+        auto list = obj.cast<py::list>();
+        if (list.empty()) {
+            // Handle empty tensor initialization
+            shape = {};
+            data = {};
+        } else {
+            parseList(list);
+        }
     }
-    cout << endl;
-}
-
-// Constructor for NumPy arrays
-Tensor::Tensor(const py::array_t<double>& np_array) {
-    auto buffer = np_array.request();
-    double* ptr = static_cast<double*>(buffer.ptr);
-    shape = vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
-    data = vector<double>(ptr, ptr + buffer.size);
+    // Handle case where a NumPy array is passed
+    else if (py::isinstance<py::array_t<double>>(obj)) {
+        auto np_array = obj.cast<py::array_t<double>>();
+        auto buffer = np_array.request();
+        shape = vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
+        data = vector<double>(static_cast<double*>(buffer.ptr), static_cast<double*>(buffer.ptr) + buffer.size);
+    }
+    else {
+        throw invalid_argument("Tensor initialization error: Unsupported type or parameter combination.");
+    }
 }
 
 int64_t Tensor::numElements(const vector<int64_t>& shape) const {

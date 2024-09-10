@@ -125,31 +125,42 @@ TEST_F(TensorTest, InvalidShapeDotProduct) {
     EXPECT_THROW(tensor1.dot(tensor3), runtime_error);
 }
 
-// Test Tensor Initialization from Python List
-TEST_F(TensorTest, PythonListInitialization) {
-    py::scoped_interpreter guard{}; // Initialize Python interpreter
-    py::list list = py::cast(vector<vector<double>>{{1.0, 2.0}, {3.0, 4.0}});
-    Tensor tensor(list);
-
-    // Check if result matches expected values
-    vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
-    EXPECT_EQ(tensor.get_data(), expected_data) << "Python list initialization failed";
-}
-
 // Test Empty Tensor Initialization
-TEST_F(TensorTest, EmptyTensorInitialization) {
-    Tensor tensor({}, {});
+TEST_F(TensorTest, TensorInit) {
+    py::scoped_interpreter guard{}; // Initialize Python interpreter
+
+    Tensor tensorEmptyArr({}, {}); // Empty init
 
     // Check if the data is empty and shape is empty
-    EXPECT_EQ(tensor.get_data().size(), 0) << "Empty tensor data size should be 0";
-    EXPECT_EQ(tensor.get_shape().size(), 0) << "Empty tensor shape size should be 0";
-}
+    EXPECT_EQ(tensorEmptyArr.get_data().size(), 0) << "Array initialization failed. Empty tensor data size should be 0";
+    EXPECT_EQ(tensorEmptyArr.get_shape().size(), 0) << "Array initialization failed. Empty tensor shape size should be 0";
 
-TEST_F(TensorTest, OneDTensorInit) {
-    Tensor tensor({1}, {1.0});
+    py::list listEmpty = py::cast(vector<double>{});
+    Tensor tensorEmptyList(listEmpty);
 
-    EXPECT_EQ(tensor.get_data().size(), 1) << "1D tensor data size should be 1";
-    EXPECT_EQ(tensor.get_shape().size(), 1) << "1D tensor shape size should be 1";
+    // Check if the data is empty and shape is empty
+    EXPECT_EQ(tensorEmptyList.get_data().size(), 0) << "Python list initialization failed. Empty tensor data size should be 0";
+    EXPECT_EQ(tensorEmptyList.get_shape().size(), 0) << "Python list initialization failed. Empty tensor shape size should be 0";
+
+    Tensor tensor1DArr({1}, {1.0}); // 1D with array init
+    const vector<double> expected1D{1.0};
+
+    // Check if the data is empty and shape is empty
+    EXPECT_EQ(tensor1DArr.get_data().size(), 1) << "Array initialization failed. 1-D tensor data size should be 1";
+    EXPECT_EQ(tensor1DArr.get_shape().size(), 1) << "Array initialization failed. 1-D tensor shape size should be 1";
+    // Check if the data is empty and shape is empty
+    EXPECT_EQ(tensor1DArr.get_data(), expected1D) << "Array initialization failed. 1-D tensor data should be 1.0";
+    EXPECT_EQ(tensor1DArr.get_shape()[0], expected1D.size()) << "Array initialization failed. 1-D tensor shape should be 1";
+
+    py::list list1D = py::cast(vector<double>{1.0});
+    Tensor tensorList1D(list1D);
+
+    // Check if the data is empty and shape is empty
+    EXPECT_EQ(tensorList1D.get_data().size(), 1) << "Python list initialization failed. 1-D tensor data size should be 1";
+    EXPECT_EQ(tensorList1D.get_shape().size(), 1) << "Python list initialization failed. 1-D tensor shape size should be 1";
+    // Check if the data is empty and shape is empty
+    EXPECT_EQ(tensorList1D.get_data(), expected1D) << "Python list initialization failed. 1-D tensor data should be 1.0";
+    EXPECT_EQ(tensorList1D.get_shape()[0], expected1D.size()) << "Python list initialization failed. 1-D tensor shape should be 1";
 }
 
 // GoogleTest entry point
