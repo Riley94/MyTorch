@@ -1,6 +1,7 @@
 #include <typeinfo>
 
 #include "MyTensor.h"
+#include "utils.h"
 #include "helpers.h"
 #include "pybind_includes.h"
 
@@ -17,10 +18,22 @@ Tensor::Tensor(const vector<int64_t>& shape, const initializer_list<double>& val
     data = values;
 }
 
-Tensor::Tensor(const vector<int64_t>& shape, const vector<double>& data)
-    : shape(shape), data(data) {
+Tensor::Tensor(const vector<int64_t>& shape, const vector<double>& data, Dtype dtype = Dtype::Float32)
+    : shape(shape), data(data), dtype(dtype) {
     assert(shape[0] * shape[1] == static_cast<int64_t>(data.size())); // Ensuring data matches the shape
 }
+
+/* Tensor::Tensor(const py::tuple& tup) {
+    vector<int64_t> temp;
+    temp.reserve(tup.size());
+    for (auto item : tup)
+    {
+        temp.push_back(item.cast<int64_t>());
+    }
+    shape = temp;
+    int64_t totalSize = numElements(shape);
+    data.resize(totalSize, 0.0); // Initialize all elements to zero
+} */
 
 void Tensor::parseList(const py::list& list, size_t depth) {
     // if list is empty
@@ -73,17 +86,6 @@ Tensor::Tensor(const py::object& obj) {
     }
 }
 
-int64_t Tensor::numElements(const vector<int64_t>& shape) const {
-    if (shape.empty()) {
-        return 0;
-    }
-    int64_t totalSize = 1;
-    for (int64_t s : shape) {
-        totalSize *= s;
-    }
-    return totalSize;
-}
-
 int64_t Tensor::getFlatIndex(const vector<int64_t>& indices) const {
     assert(indices.size() == shape.size());
     int64_t flatIndex = 0;
@@ -127,8 +129,8 @@ Tensor Tensor::getitem(const py::object& obj) const {
         } else {
             cout << "More than one dimension confirmed" << endl;
             // Handle other dimensions (e.g., tensor[0] -> first row)
-            std::vector<int64_t> result_shape = {shape[1]};
-            std::vector<double> result_data(shape[1]);
+            vector<int64_t> result_shape = {shape[1]};
+            vector<double> result_data(shape[1]);
             cout << "Starting loop" << endl;
             for (int64_t i = 0; i < shape[1]; ++i) {
                 result_data[i] = data[idx * shape[1] + i];
@@ -309,8 +311,27 @@ void Tensor::printRecursive(ostream& os, const vector<int64_t>& indices, size_t 
 string Tensor::repr() const {
     ostringstream oss;
     oss << "Tensor(shape=[" << shape;
-    oss << "], dtype=float32)\n"; // Assuming float32 for simplicity
+    oss << "], dtype=";
 
+    switch (dtype)
+    {
+    case Dtype::Float32:
+        oss << "float32";
+        break;
+    case Dtype::Float64:
+        oss << "float64";
+        break;
+    case Dtype::Int32:
+        oss << "Int32";
+        break;
+    case Dtype::Int64:
+        oss << "Int64";
+        break;
+    default:
+        oss << "Unknown";
+        break;
+    }
+    oss << ")\n";
     // Print the tensor data
     vector<int64_t> indices(shape.size(), 0);
     printRecursive(oss, {}, 0);  // Use a recursive method to print multi-dimensional arrays

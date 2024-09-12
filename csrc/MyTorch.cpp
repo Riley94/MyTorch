@@ -5,13 +5,13 @@
 using namespace std;
 
 // Forward declaration of util functions
-Tensor ones_like(const Tensor& other);
-Tensor zeros_like(const Tensor& other);
+//Tensor ones_like(const Tensor& other, Dtype dtype);
+//Tensor zeros_like(const Tensor& other);
 
 // Pybind11 binding code
 PYBIND11_MODULE(MyTorchCPP, m) {
     py::class_<Tensor>(m, "Tensor")
-        .def(py::init<const vector<int64_t>&, const vector<double>&>())
+        .def(py::init<const vector<int64_t>&, const vector<double>&, Dtype>())
         .def(py::init<const py::object&>())
         .def("innerProduct", &Tensor::dot)
         .def("__add__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator+))
@@ -44,6 +44,7 @@ PYBIND11_MODULE(MyTorchCPP, m) {
         .export_values();
 
     m.def("rand_like", &rand_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
-    m.def("ones_like", &ones_like);
+    m.def("ones_like", py::overload_cast<const Tensor&, Dtype>(&ones_like), py::arg("other"), py::arg("dtype") = Dtype::Float64);
+    m.def("ones_like", py::overload_cast<py::tuple&, Dtype>(&ones_like), py::arg("shape"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros_like", &zeros_like);
 }

@@ -10,14 +10,15 @@
 
 using namespace std;
 
+enum class Dtype;
+
 class Tensor {
 private:
     vector<int64_t> shape; // Shape of the tensor
     vector<double> data;   // Flattened data array
+    Dtype dtype;
 
     // Computes the total number of elements in the tensor based on its shape
-    int64_t numElements(const vector<int64_t>& shape) const;
-
     int64_t getFlatIndex(const vector<int64_t>& indices) const;
 
 public:
@@ -28,10 +29,13 @@ public:
     Tensor(const vector<int64_t>& shape, const initializer_list<double>& values);
 
     // accepting vectors
-    Tensor(const vector<int64_t>& shape, const vector<double>& data);
+    Tensor(const vector<int64_t>& shape, const vector<double>& data, Dtype dtype);
 
     // python objects
     Tensor(const py::object& obj);
+
+    // python tuples
+    //Tensor(const py::tuple& tup);
 
     // Get the shape of the tensor
     vector<int64_t> getShape() const { return shape; }
