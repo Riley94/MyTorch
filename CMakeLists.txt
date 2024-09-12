@@ -10,7 +10,7 @@ find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter Development)
 message(STATUS "Using Python version: ${Python3_VERSION}")
 
 # Add Tensor source files (modify path if necessary)
-set(TENSOR_SRC csrc/MyTensor.cpp)
+set(TENSOR_SRC csrc/MyTensor.cpp csrc/utils.cpp)
 
 include(FetchContent)
 FetchContent_Declare(

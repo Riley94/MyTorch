@@ -13,7 +13,7 @@ CXXFLAGS := -I csrc/include -O0 -g -Wall -shared -std=c++17 -fPIC $(PYBIND_INCLU
 TARGET := MyTorchCPP$(PYTHON_EXT_SUFFIX)
 
 # Source files
-SOURCES = csrc/MyTensor.cpp csrc/MyTorch.cpp
+SOURCES = csrc/MyTensor.cpp csrc/MyTorch.cpp csrc/utils.cpp
 
 # Object files
 OBJECTS := $(patsubst csrc/%.cpp,csrc/build/%.o,$(SOURCES))

@@ -12,28 +12,25 @@ int64_t numElements(const vector<int64_t>& shape) {
     return totalSize;
 }
 
-Tensor ones_like(const Tensor& other, Dtype dtype) {
+Tensor ones_like(const Tensor& other, const Dtype& dtype) {
     return Tensor(other.get_shape(), vector<double>(other.size(), 1.0), dtype);
 }
 
-Tensor ones_like(py::tuple& shape, Dtype dtype) {
+Tensor ones(const py::tuple& shape, const Dtype& dtype) {
     vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto item : shape)
     {
         temp.push_back(item.cast<int64_t>());
     }
-    int64_t totalSize = numElements(temp);
-    vector<double> data;
-    data.resize(totalSize, 1.0); // Initialize all elements to one
-    return Tensor(temp, data, dtype);
+    return ones_like(Tensor(temp), dtype);
 }
 
 Tensor zeros_like(const Tensor& other) {
     return Tensor(other.get_shape());
 }
 
-Tensor rand_like(const Tensor& other, Dtype dtype) {
+Tensor rand_like(const Tensor& other, const Dtype& dtype) {
     vector<double> random_data(other.size()); // Default to double, may change based on dtype
 
     random_device rd;
@@ -64,4 +61,14 @@ Tensor rand_like(const Tensor& other, Dtype dtype) {
     }
 
     return Tensor(other.get_shape(), random_data, dtype);
+}
+
+Tensor rand(const py::tuple& shape, const Dtype& dtype) {
+    vector<int64_t> temp;
+    temp.reserve(shape.size());
+    for (auto item : shape)
+    {
+        temp.push_back(item.cast<int64_t>());
+    }
+    return rand_like(Tensor(temp), dtype);
 }
