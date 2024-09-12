@@ -26,8 +26,18 @@ Tensor ones(const py::tuple& shape, const Dtype& dtype) {
     return ones_like(Tensor(temp), dtype);
 }
 
-Tensor zeros_like(const Tensor& other) {
-    return Tensor(other.get_shape());
+Tensor zeros_like(const Tensor& other, const Dtype& dtype) {
+    return Tensor(other.get_shape(), vector<double>(other.size(), 0.0), dtype);
+}
+
+Tensor zeros(const py::tuple& shape, const Dtype& dtype) {
+    vector<int64_t> temp;
+    temp.reserve(shape.size());
+    for (auto item : shape)
+    {
+        temp.push_back(item.cast<int64_t>());
+    }
+    return zeros_like(Tensor(temp), dtype);
 }
 
 Tensor rand_like(const Tensor& other, const Dtype& dtype) {

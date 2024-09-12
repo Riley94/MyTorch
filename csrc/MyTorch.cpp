@@ -4,10 +4,6 @@
 
 using namespace std;
 
-// Forward declaration of util functions
-//Tensor ones_like(const Tensor& other, Dtype dtype);
-//Tensor zeros_like(const Tensor& other);
-
 // Pybind11 binding code
 PYBIND11_MODULE(MyTorchCPP, m) {
     py::class_<Tensor>(m, "Tensor")
@@ -47,5 +43,6 @@ PYBIND11_MODULE(MyTorchCPP, m) {
     m.def("rand", py::overload_cast<const py::tuple&, const Dtype&>(&rand), py::arg("shape"), py::arg("dtype") = Dtype::Float64);
     m.def("ones_like", &ones_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
     m.def("ones", &ones, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
-    m.def("zeros_like", &zeros_like);
+    m.def("zeros_like", &zeros_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
+    m.def("zeros", &zeros, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
 }
