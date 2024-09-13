@@ -29,6 +29,8 @@ To build and use MyTensor, you need the following dependencies:
 - **C++ Compiler**: A C++17 compliant compiler (e.g., `g++`).
 - **Pybind11**: A lightweight header-only library for exposing C++ types in Python and vice versa.
 - **NumPy**: A fundamental package for scientific computing with Python.
+- **PyTorch**: What we are trying to emulate. Simply need this to show side-by-side comparison.
+- **Graphviz**: For visualization in the model-building phase.
 
 For testing you will need:
 
@@ -36,6 +38,12 @@ For testing you will need:
 
 ## Installation
 ### The following assumes you're using Linux
+**For easy setup, simply run:**
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+**This installs and sets up necessary packages, including gtest and python3.11 and dev libs, and then creates a python venv in the current directory. (same as the following, except the pip installs)**
 
 1. **Clone the repository**:
     ```bash
@@ -62,7 +70,7 @@ For testing you will need:
     Make sure you have Pybind and NumPy installed:
 
     ```bash
-    pip install numpy pybind11
+    pip install numpy pybind11 torch graphviz
     ```
 
 4. **Build the Project**:
