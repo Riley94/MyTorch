@@ -1,6 +1,6 @@
 import MyTorchCPP
 # need to rethink. not scalable
-from MyTorchCPP import ones_like, zeros_like, rand_like, Dtype, rand, ones
+from MyTorchCPP import ones_like, zeros_like, rand_like, Dtype, rand, ones, zeros
 
 class Tensor(MyTorchCPP.Tensor):
     def __init__(self, data):
