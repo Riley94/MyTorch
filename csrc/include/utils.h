@@ -20,3 +20,4 @@ Tensor zeros_like(const Tensor& other, const Dtype& dtype = Dtype::Float64);
 Tensor zeros(const py::tuple& shape, const Dtype& dtype = Dtype::Float64);
 Tensor rand_like(const Tensor& other, const Dtype& dtype = Dtype::Float64);
 Tensor rand(const py::tuple& shape, const Dtype& dtype = Dtype::Float64);
+Tensor from_numpy(const py::array& np_array);

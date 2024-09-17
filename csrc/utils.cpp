@@ -82,3 +82,39 @@ Tensor rand(const py::tuple& shape, const Dtype& dtype) {
     }
     return rand_like(Tensor(temp), dtype);
 }
+
+Tensor from_numpy(const py::array& np_array) {
+    // Request buffer information from the NumPy array
+    auto buffer_info = np_array.request();
+    
+    // Extract shape information from the buffer
+    vector<int64_t> tensor_shape(buffer_info.shape.begin(), buffer_info.shape.end());
+
+    if (py::format_descriptor<double>::format() == buffer_info.format) {
+        // Create a vector to store the data from the NumPy array
+        vector<double> tensor_data(static_cast<double*>(buffer_info.ptr), 
+                                        static_cast<double*>(buffer_info.ptr) + buffer_info.size);
+        return Tensor(tensor_shape, tensor_data, Dtype::Float64);
+    }
+    else if (py::format_descriptor<int64_t>::format() == buffer_info.format) {
+        // Create a vector to store the data from the NumPy array
+        vector<double> tensor_data(static_cast<int64_t*>(buffer_info.ptr), 
+                                        static_cast<int64_t*>(buffer_info.ptr) + buffer_info.size);
+        return Tensor(tensor_shape, tensor_data, Dtype::Int64);
+    }
+    else if (py::format_descriptor<int32_t>::format() == buffer_info.format) {
+        // Create a vector to store the data from the NumPy array
+        vector<double> tensor_data(static_cast<int32_t*>(buffer_info.ptr), 
+                                        static_cast<int32_t*>(buffer_info.ptr) + buffer_info.size);
+        return Tensor(tensor_shape, tensor_data, Dtype::Int32);
+    }
+    else if (py::format_descriptor<float>::format() == buffer_info.format) {
+        // Create a vector to store the data from the NumPy array
+        vector<double> tensor_data(static_cast<float*>(buffer_info.ptr), 
+                                        static_cast<float*>(buffer_info.ptr) + buffer_info.size);
+        return Tensor(tensor_shape, tensor_data, Dtype::Float32);
+    }
+    else {
+        throw invalid_argument("Unsupported data type provided");
+    }
+}

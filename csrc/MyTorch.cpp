@@ -9,8 +9,15 @@ PYBIND11_MODULE(MyTorchCPP, m) {
     py::class_<Tensor>(m, "Tensor")
         .def(py::init<const vector<int64_t>&, const vector<double>&, Dtype>())
         .def(py::init<const py::object&>())
+        // Define the property for `shape`
+        .def_property_readonly("shape", &Tensor::get_shape)
+        // Define the property for `dtype`
+        .def_property_readonly("dtype", [](const Tensor &t) {
+            return t.get_dtype();  // Assuming you have a method to return dtype
+        })
         .def("innerProduct", &Tensor::dot)
         .def("__add__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator+))
+        .def("add_", &Tensor::add_) // In-place scalar addition
         // Scalar multiplication
         .def("__mul__", [](const Tensor& self, double scalar) {
             return self * scalar;  // Calls scalar multiplication
@@ -24,6 +31,7 @@ PYBIND11_MODULE(MyTorchCPP, m) {
         .def("__truediv__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator/))
         .def("__neg__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator-))
         .def("transpose", static_cast<Tensor (Tensor::*)() const>(&Tensor::transpose))
+        .def("numpy", &Tensor::numpy)
         .def("__repr__", &Tensor::repr)
         // Overload for single argument indexing (e.g., tensor[0])
         .def("__getitem__", &Tensor::getitem)
@@ -45,4 +53,5 @@ PYBIND11_MODULE(MyTorchCPP, m) {
     m.def("ones", &ones, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros_like", &zeros_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros", &zeros, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
+    m.def("from_numpy", &from_numpy, py::arg("array"));
 }

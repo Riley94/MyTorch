@@ -34,9 +34,6 @@ public:
     // python objects
     Tensor(const py::object& obj);
 
-    // python tuples
-    //Tensor(const py::tuple& tup);
-
     // Get the shape of the tensor
     vector<int64_t> getShape() const { return shape; }
 
@@ -76,14 +73,18 @@ public:
     Tensor dot(const Tensor& other) const;
 
     Tensor transpose() const;
+    py::array_t<double> numpy() const;
 
     //Tensor outer_product(const Tensor& other) const;
 
     // Print tensor elements
     string repr() const;
 
+    void add_(const double& other);
+
     vector<double> get_data() const { return data; }
     vector<int64_t> get_shape() const { return shape; }
+    Dtype get_dtype() const { return dtype; }
 
 private:
     void printRecursive(ostream& os, const vector<int64_t>& indices, size_t dim) const;

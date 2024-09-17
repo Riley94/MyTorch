@@ -1,9 +1,8 @@
 # Define variables
-PYTHON := python3.11
-PYBIND_INCLUDES := $(shell $(PYTHON) -m pybind11 --includes)
-PYTHON_EXT_SUFFIX := $(shell $(PYTHON)-config --extension-suffix)
-PYTHON_LIB := $(shell $(PYTHON)-config --ldflags)
-PYTHON_INCLUDE := $(shell $(PYTHON)-config --includes)
+PYBIND_INCLUDES := $(shell python -m pybind11 --includes)
+PYTHON_EXT_SUFFIX := $(shell python-config --extension-suffix)
+PYTHON_LIB := $(shell python-config --ldflags)
+PYTHON_INCLUDE := $(shell python-config --includes)
 
 # Compiler and flags
 CXX := g++
@@ -47,6 +46,8 @@ csrc/tests:
 # Clean target to remove generated files
 clean:
 	rm -f $(OBJECTS) $(TARGET)
+	python setup.py clean --all
+	rm MyTorchCPP*
 
 # Target for running tests
 test:
@@ -54,3 +55,6 @@ test:
 	cmake --build build
 	cd build && ctest
 	cd ..
+
+windows:
+	python setup.py build_ext --inplace

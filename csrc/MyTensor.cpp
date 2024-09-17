@@ -23,18 +23,6 @@ Tensor::Tensor(const vector<int64_t>& shape, const vector<double>& data, Dtype d
     assert(shape[0] * shape[1] == static_cast<int64_t>(data.size())); // Ensuring data matches the shape
 }
 
-/* Tensor::Tensor(const py::tuple& tup) {
-    vector<int64_t> temp;
-    temp.reserve(tup.size());
-    for (auto item : tup)
-    {
-        temp.push_back(item.cast<int64_t>());
-    }
-    shape = temp;
-    int64_t totalSize = numElements(shape);
-    data.resize(totalSize, 0.0); // Initialize all elements to zero
-} */
-
 void Tensor::parseList(const py::list& list, size_t depth) {
     // if list is empty
     if (py::len(list) == 0) {
@@ -354,4 +342,21 @@ Tensor Tensor::transpose() const {
     }
 
     return result;
+}
+
+void Tensor::add_(const double& other)
+{
+    for (int64_t i = 0; i < size(); ++i) {
+        data[i] += other;
+    }
+}
+
+py::array_t<double> Tensor::numpy() const {
+    py::array_t<double> np_array(shape);
+    auto buffer = np_array.request();
+    double* ptr = static_cast<double*>(buffer.ptr);
+    for (int64_t i = 0; i < size(); ++i) {
+        ptr[i] = data[i];
+    }
+    return np_array;
 }
