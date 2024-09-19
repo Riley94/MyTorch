@@ -25,7 +25,7 @@ MyTorch is intended as an educational project for myself wherein I attempt to re
 
 To build and use MyTensor, you need the following dependencies:
 
-- **Python**: Version 3.11
+- **Python**: Latest Version
 - **C++ Compiler**: A C++17 compliant compiler (e.g., `g++`).
 - **Pybind11**: A lightweight header-only library for exposing C++ types in Python and vice versa.
 - **NumPy**: A fundamental package for scientific computing with Python.
@@ -43,7 +43,7 @@ For testing you will need:
 chmod +x setup.sh
 ./setup.sh
 ```
-**This installs and sets up necessary packages, including gtest and python3.11 and dev libs, and then creates a python venv in the current directory. (same as the following, except the pip installs)**
+**This installs and sets up necessary packages, including gtest and python and dev libs, and then creates a python venv in the current directory. (same as the following, except the pip installs)**
 
 1. **Clone the repository**:
     ```bash
@@ -53,10 +53,10 @@ chmod +x setup.sh
 
 2. **Create Environment (Optional, but recommended)**:
 
-    Make sure you have Python version 3.11 and pyvenv installed:
+    Make sure you have Python and pyvenv installed:
 
     ```bash
-    python3.11 -m venv .
+    python -m venv .
     ```
 
     Activate venv:
@@ -77,13 +77,19 @@ chmod +x setup.sh
 
     Use the provided Makefile to build the project:
 
+   
+    For Linux:
     ```bash
     make
     ```
 
+    For Windows:
+    ```bash
+    make windows
+    ```
     This will generate the shared library file `MyTorch.<extension>` that can be imported in Python.
 
-5. **Use the Test Suite**
+6. **Use the Test Suite**
 
    ```bash
    make test
