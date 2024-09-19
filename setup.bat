@@ -25,17 +25,17 @@ IF %ERRORLEVEL% NEQ 0 (
     choco install git -y
 )
 
-REM Install Python 3.11
-ECHO Installing Python 3.11...
-choco install python --version=3.11 -y
+REM Install Python 3.12
+ECHO Installing Python 3.12...
+choco install python --version=3.12 -y
 
-REM Update PATH to include Python 3.11
-SET "PATH=C:\Python311\Scripts\;C:\Python311\;%PATH%"
+REM Update PATH to include Python 3.12
+SET "PATH=C:\Python312\Scripts\;C:\Python312\;%PATH%"
 
-REM Verify Python 3.11 is installed
-python --version 2>nul | find "3.11" >nul
+REM Verify Python 3.12 is installed
+python --version 2>nul | find "3.12" >nul
 IF %ERRORLEVEL% NEQ 0 (
-    ECHO Python 3.11 not found in PATH.
+    ECHO Python 3.12 not found in PATH.
     EXIT /B 1
 )
 
@@ -67,8 +67,8 @@ SETX GTEST_ROOT "C:\gtest"
 REM Go back to the original directory
 cd %~dp0
 
-REM Create and activate a Python 3.11 virtual environment
-ECHO Creating Python 3.11 virtual environment...
+REM Create and activate a Python 3.12 virtual environment
+ECHO Creating Python 3.12 virtual environment...
 
 python -m venv venv
 
@@ -76,7 +76,7 @@ REM Activate the virtual environment
 CALL venv\Scripts\activate.bat
 
 ECHO.
-ECHO Python 3.11 environment is ready and activated.
+ECHO Python 3.12 environment is ready and activated.
 ECHO.
 
 PAUSE
