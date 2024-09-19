@@ -6,13 +6,13 @@ PYTHON_INCLUDE := $(shell python-config --includes)
 
 # Compiler and flags
 CXX := g++
-CXXFLAGS := -I csrc/include -O0 -g -Wall -shared -std=c++17 -fPIC $(PYBIND_INCLUDES)
+CXXFLAGS := -I csrc/include -O0 -g -Wall -shared -std=c++17 -Weffc++ -fPIC $(PYBIND_INCLUDES)
 
 # Target
 TARGET := MyTorchCPP$(PYTHON_EXT_SUFFIX)
 
 # Source files
-SOURCES = csrc/MyTensor.cpp csrc/MyTorch.cpp csrc/utils.cpp
+SOURCES = csrc/MyTensor.cpp csrc/MyTorch.cpp csrc/utils.cpp csrc/Proxy.cpp
 
 # Object files
 OBJECTS := $(patsubst csrc/%.cpp,csrc/build/%.o,$(SOURCES))

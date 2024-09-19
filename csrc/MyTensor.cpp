@@ -1,50 +1,112 @@
 #include <typeinfo>
 
 #include "MyTensor.h"
-#include "utils.h"
 #include "helpers.h"
 #include "pybind_includes.h"
 
-using namespace std;
-
-Tensor::Tensor(const vector<int64_t>& shape) : shape(shape) {
+Tensor::Tensor(const std::vector<int64_t>& shape) : shape(shape) {
     int64_t totalSize = numElements(shape);
-    data.resize(totalSize, 0.0); // Initialize all elements to zero
+    data = std::vector<double>(totalSize, 0.0); // Initialize all elements to zero
 }
 
-Tensor::Tensor(const vector<int64_t>& shape, const initializer_list<double>& values) : shape(shape) {
+Tensor::Tensor(const std::vector<int64_t>& shape, const std::initializer_list<double>& values) : shape(shape) {
     int64_t totalSize = numElements(shape);
     assert(static_cast<int64_t>(values.size()) == totalSize);
     data = values;
 }
 
-Tensor::Tensor(const vector<int64_t>& shape, const vector<double>& data, Dtype dtype = Dtype::Float32)
-    : shape(shape), data(data), dtype(dtype) {
-    assert(shape[0] * shape[1] == static_cast<int64_t>(data.size())); // Ensuring data matches the shape
+Tensor::Tensor(const std::vector<int64_t>& shape, Dtype dtype) : shape(shape), dtype(dtype) {
+    int64_t totalSize = numElements(shape);
+    switch (dtype) {
+    case Dtype::Float32:
+        data = std::vector<float>(totalSize, 0.0f);
+        break;
+    case Dtype::Float64:
+        data = std::vector<double>(totalSize, 0.0);
+        break;
+    case Dtype::Int32:
+        data = std::vector<int32_t>(totalSize, 0);
+        break;
+    case Dtype::Int64:
+        data = std::vector<int64_t>(totalSize, 0);
+        break;
+    default:
+        throw std::invalid_argument("Unsupported dtype provided");
+    }
 }
 
 void Tensor::parseList(const py::list& list, size_t depth) {
-    // if list is empty
+    // Handle empty list
     if (py::len(list) == 0) {
         if (depth == 0) {
-            // This is the first level and it's an empty list, so the shape is empty
             shape.clear();
         }
         return;
     }
+
+    // Update shape based on the current depth
     if (depth == shape.size()) {
         shape.push_back(py::len(list));
     } else {
         if (shape[depth] != static_cast<int64_t>(py::len(list))) {
-            throw runtime_error("Inconsistent shape in nested list");
+            throw std::runtime_error("Inconsistent shape in nested list");
         }
     }
 
     for (auto item : list) {
         if (py::isinstance<py::list>(item)) {
-            parseList(item.cast<py::list>(), depth + 1);  // Recursive call for nested lists
+            // Recursive call for nested lists
+            parseList(item.cast<py::list>(), depth + 1);
         } else {
-            data.push_back(item.cast<double>());
+            if (!has_determined_dtype) {
+                // First time encountering data, determine the dtype
+                has_determined_dtype = true;
+
+                if (py::isinstance<py::float_>(item)) {
+                    dtype = Dtype::Float64;
+                    data = std::vector<double>();
+                } else if (py::isinstance<py::int_>(item)) {
+                    int64_t value = item.cast<int64_t>();
+                    if (value > std::numeric_limits<int32_t>::max() ||
+                        value < std::numeric_limits<int32_t>::min()) {
+                        dtype = Dtype::Int64;
+                        data = std::vector<int64_t>();
+                    } else {
+                        dtype = Dtype::Int32;
+                        data = std::vector<int32_t>();
+                    }
+                } else {
+                    throw std::runtime_error("Unsupported data type in list");
+                }
+            }
+
+            // Store the value into the appropriate vector in 'data'
+            if (dtype == Dtype::Float64) {
+                if (py::isinstance<py::float_>(item) || py::isinstance<py::int_>(item)) {
+                    double val = item.cast<double>();
+                    std::get<std::vector<double>>(data).push_back(val);
+                } else {
+                    throw std::runtime_error("Inconsistent data types in list");
+                }
+            } else if (dtype == Dtype::Int64) {
+                if (py::isinstance<py::int_>(item)) {
+                    int64_t val = item.cast<int64_t>();
+                    std::get<std::vector<int64_t>>(data).push_back(val);
+                } else {
+                    throw std::runtime_error("Expected integer value in list");
+                }
+            } else if (dtype == Dtype::Int32) {
+                if (py::isinstance<py::int_>(item)) {
+                    int64_t val = item.cast<int64_t>();
+                    if (val > std::numeric_limits<int32_t>::max() ||
+                        val < std::numeric_limits<int32_t>::min()) {
+                        throw std::runtime_error("Integer value out of range for int32_t");
+                    }
+                    std::get<std::vector<int32_t>>(data).push_back(static_cast<int32_t>(val));
+                } else {
+                    throw std::runtime_error("Expected integer value in list");
+                }
+            }
         }
     }
 }
@@ -66,15 +128,15 @@ Tensor::Tensor(const py::object& obj) {
     else if (py::isinstance<py::array_t<double>>(obj)) {
         auto np_array = obj.cast<py::array_t<double>>();
         auto buffer = np_array.request();
-        shape = vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
-        data = vector<double>(static_cast<double*>(buffer.ptr), static_cast<double*>(buffer.ptr) + buffer.size);
+        shape = std::vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
+        data = std::vector<double>(static_cast<double*>(buffer.ptr), static_cast<double*>(buffer.ptr) + buffer.size);
     }
     else {
-        throw invalid_argument("Tensor initialization error: Unsupported type or parameter combination.");
+        throw std::invalid_argument("Tensor initialization error: Unsupported type or parameter combination.");
     }
 }
 
-int64_t Tensor::getFlatIndex(const vector<int64_t>& indices) const {
+int64_t Tensor::getFlatIndex(const std::vector<int64_t>& indices) const {
     assert(indices.size() == shape.size());
     int64_t flatIndex = 0;
     for (unsigned int i = 0; i < indices.size(); ++i) {
@@ -84,172 +146,107 @@ int64_t Tensor::getFlatIndex(const vector<int64_t>& indices) const {
     return flatIndex;
 }
 
-double Tensor::operator()(const vector<int64_t>& indices) const {
+template <typename T>
+T Tensor::getValue(const std::vector<int64_t>& indices) const {
     int64_t flatIndex = getFlatIndex(indices);
-    return data[flatIndex];
-}
 
-double& Tensor::operator()(const vector<int64_t>& indices) {
-    int64_t flatIndex = getFlatIndex(indices);
-    return data[flatIndex];
-}
+    // Ensure that T matches the data type stored
+    return std::visit([flatIndex](const auto& dataVec) -> T {
+        using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
 
-double& Tensor::operator[](int64_t index) {
-    assert(index >= 0 && index < static_cast<int64_t>(data.size()));
-    return data[index];
-}
-
-const double& Tensor::operator[](int64_t index) const {
-    assert(index >= 0 && index < static_cast<int64_t>(data.size()));
-    return data[index];
-}
-
-// Overloaded method for single argument indexing
-Tensor Tensor::getitem(const py::object& obj) const {
-    cout << "getitem called" << endl;
-    if (py::isinstance<py::int_>(obj)) {
-        cout << "integer confirmed" << endl;
-        // Single integer indexing (e.g., tensor[0])
-        int64_t idx = obj.cast<int64_t>();
-        if (shape.size() == 1) {
-            cout << "Only one dimension confirmed" << endl;
-            return Tensor({1}, {data[idx]});
-        } else {
-            cout << "More than one dimension confirmed" << endl;
-            // Handle other dimensions (e.g., tensor[0] -> first row)
-            vector<int64_t> result_shape = {shape[1]};
-            vector<double> result_data(shape[1]);
-            cout << "Starting loop" << endl;
-            for (int64_t i = 0; i < shape[1]; ++i) {
-                result_data[i] = data[idx * shape[1] + i];
-            }
-            cout << "Finished" << endl;
-            return Tensor(result_shape, result_data);
+        if constexpr (!std::is_same_v<T, ValueType>) {
+            throw std::runtime_error("Requested type does not match tensor's data type");
         }
-    } else if (py::isinstance<py::slice>(obj)) {
-        // Handle slicing (e.g., tensor[:])
-        py::ssize_t start, stop, step, length;
-        py::slice slice = obj.cast<py::slice>();
-        if (!slice.compute(shape[0], &start, &stop, &step, &length)) {
-            throw runtime_error("Invalid slice");
+
+        if (flatIndex < 0 || flatIndex >= static_cast<int64_t>(dataVec.size())) {
+            throw std::out_of_range("Index out of range");
         }
-        // Implement slicing logic here for 1D slices
-        vector<double> result_data(length);
-        for (int64_t i = start; i < stop; i += step) {
-            result_data[(i - start) / step] = data[i];
-        }
-        return Tensor({length}, result_data);
-    }
-    throw runtime_error("Invalid indexing type");
+
+        return dataVec[flatIndex];
+    }, data);
 }
 
-// Overloaded method for two arguments indexing (e.g., tensor[0, 1] or tensor[:, 0])
-Tensor Tensor::slice(const py::object& row_obj, const py::object& col_obj) const {
-    py::ssize_t row_start, row_stop, row_step, row_length;
-    py::ssize_t col_start, col_stop, col_step, col_length;
-
-    // Handle row slicing or single index
-    if (py::isinstance<py::slice>(row_obj)) {
-        py::slice row_slice = row_obj.cast<py::slice>();
-        if (!row_slice.compute(shape[0], &row_start, &row_stop, &row_step, &row_length)) {
-            throw runtime_error("Invalid row slice");
+Proxy Tensor::operator[](int64_t index) {
+    return std::visit([index](auto& dataVec) -> Proxy {
+        if (index < 0 || index >= static_cast<int64_t>(dataVec.size())) {
+            throw std::out_of_range("Index out of range");
         }
-    } else if (py::isinstance<py::int_>(row_obj)) {
-        row_start = row_obj.cast<int64_t>();
-        row_stop = row_start + 1;
-        row_step = 1;
-        row_length = 1;
-    } else {
-        throw runtime_error("Invalid row object: expected slice or int");
+        return Proxy(dataVec[index]);
+    }, data);
+}
+
+template<typename T, typename Op>
+void apply_elementwise_operation(Tensor& result, const auto& lhs_data, const auto& rhs_data, Op op) {
+    size_t dataSize = lhs_data.size();
+    std::vector<T> result_data(dataSize);
+
+    for (size_t i = 0; i < dataSize; ++i) {
+        result_data[i] = op(static_cast<T>(lhs_data[i]), static_cast<T>(rhs_data[i]));
     }
 
-    // Handle col slicing or single index
-    if (py::isinstance<py::slice>(col_obj)) {
-        py::slice col_slice = col_obj.cast<py::slice>();
-        if (!col_slice.compute(shape[1], &col_start, &col_stop, &col_step, &col_length)) {
-            throw runtime_error("Invalid col slice");
-        }
-    } else if (py::isinstance<py::int_>(col_obj)) {
-        col_start = col_obj.cast<int64_t>();
-        col_stop = col_start + 1;
-        col_step = 1;
-        col_length = 1;
-    } else {
-        throw runtime_error("Invalid col object: expected slice or int");
+    result.set_data(result_data);
+}
+
+template<typename Op>
+Tensor elementwise_binary_op(const Tensor& lhs, const Tensor& rhs, Op op, const std::string& op_name) {
+    if (lhs.get_shape() != rhs.get_shape()) {
+        throw std::runtime_error("Shape mismatch for " + op_name);
     }
 
-    // Create a result tensor for the sliced portion
-    vector<int64_t> result_shape = {row_length, col_length};
-    Tensor result(result_shape);
+    Dtype result_dtype = promote_types(lhs.get_dtype(), rhs.get_dtype());
+    Tensor result(lhs.get_shape(), result_dtype);
 
-    // Fill the result tensor with the appropriate data
-    for (int64_t i = row_start; i < row_stop; i += row_step) {
-        for (int64_t j = col_start; j < col_stop; j += col_step) {
-            result({(i - row_start) / row_step, (j - col_start) / col_step}) = data[i * shape[1] + j];
+    auto operationLambda = [&](const auto& lhs_data, const auto& rhs_data) {
+        switch (result_dtype) {
+            case Dtype::Float64:
+                apply_elementwise_operation<double>(result, lhs_data, rhs_data, op);
+                break;
+            case Dtype::Float32:
+                apply_elementwise_operation<float>(result, lhs_data, rhs_data, op);
+                break;
+            case Dtype::Int64:
+                apply_elementwise_operation<int64_t>(result, lhs_data, rhs_data, op);
+                break;
+            case Dtype::Int32:
+                apply_elementwise_operation<int32_t>(result, lhs_data, rhs_data, op);
+                break;
+            default:
+                throw std::runtime_error("Unsupported data type for " + op_name);
         }
-    }
+    };
+
+    std::visit(operationLambda, lhs.get_data(), rhs.get_data());
 
     return result;
 }
 
 Tensor Tensor::operator+(const Tensor& other) const {
-    if (shape != other.shape) {
-        throw runtime_error("Shape mismatch for addition");
-    }
-
-    Tensor result(shape);
-    for (int64_t i = 0; i < size(); ++i) {
-        result.data[i] = this->data[i] + other.data[i];
-    }
-    return result;
-}
-
-Tensor Tensor::operator*(const Tensor& other) const {
-    assert(shape == other.shape);
-    Tensor result(shape);
-    for (int64_t i = 0; i < size(); ++i) {
-        result.data[i] = this->data[i] * other.data[i];
-    }
-    return result;
-}
-
-Tensor Tensor::operator*(const double& other) const {
-    Tensor result(shape);
-    for (int64_t i = 0; i < size(); ++i) {
-        result.data[i] = this->data[i] * other;
-    }
-    return result;
+    return elementwise_binary_op(*this, other, std::plus<>(), "addition");
 }
 
 Tensor Tensor::operator-(const Tensor& other) const {
-    assert(shape == other.shape);
-    Tensor result(shape);
-    for (int64_t i = 0; i < size(); ++i) {
-        result.data[i] = this->data[i] - other.data[i];
-    }
-    return result;
+    return elementwise_binary_op(*this, other, std::minus<>(), "subtraction");
+}
+
+Tensor Tensor::operator*(const Tensor& other) const {
+    return elementwise_binary_op(*this, other, std::multiplies<>(), "multiplication");
 }
 
 Tensor Tensor::operator/(const Tensor& other) const {
-    assert(shape == other.shape);
-    Tensor result(shape);
-    for (int64_t i = 0; i < size(); ++i) {
-        result.data[i] = this->data[i] / other.data[i];
-    }
-    return result;
+    return elementwise_binary_op(*this, other, std::divides<>(), "division");
 }
 
-Tensor Tensor::operator-() const {
+/*Tensor Tensor::operator-() const {
     Tensor result(shape);
     for (int64_t i = 0; i < size(); ++i) {
         result.data[i] = -this->data[i];
     }
     return result;
-}
+}*/
 
 
 
-Tensor Tensor::dot(const Tensor& other) const {
+/*Tensor Tensor::dot(const Tensor& other) const {
     checkDimensions(shape, other.shape);
 
     vector<int64_t> result_shape = {shape[0], other.shape[1]};
@@ -264,40 +261,35 @@ Tensor Tensor::dot(const Tensor& other) const {
     }
 
     return Tensor(result_shape, result_data);
-}
+}*/
 
-// Recursive function to print tensor data with appropriate formatting
-void Tensor::printRecursive(ostream& os, const vector<int64_t>& indices, size_t dim) const {
-    if (dim == shape.size() - 1) {
-        // Base case: printing the innermost dimension
+void Tensor::printRecursive(std::ostream& os, const std::vector<int64_t>& indices, size_t dim) const {
+    if (dim == shape.size()) {
+        // Reached the full depth of indices, print the value
+        int64_t flatIndex = getFlatIndex(indices);
+        std::visit([&os, flatIndex](const auto& dataVec) {
+            os << dataVec[flatIndex];
+        }, data);
+    } else {
         os << "[";
         for (int64_t i = 0; i < shape[dim]; ++i) {
-            vector<int64_t> new_indices = indices;
+            std::vector<int64_t> new_indices = indices;
             new_indices.push_back(i);
-            os << data[getFlatIndex(new_indices)];
+            printRecursive(os, new_indices, dim + 1);
             if (i < shape[dim] - 1) {
                 os << ", ";
             }
         }
         os << "]";
-    } else {
-        // Recursive case: printing outer dimensions
-        os << "[";
-        for (int64_t i = 0; i < shape[dim]; ++i) {
-            vector<int64_t> new_indices = indices;
-            new_indices.push_back(i);
-            printRecursive(os, new_indices, dim + 1);
-            if (i < shape[dim] - 1) {
-                os << ",\n";
-            }
+        if (dim == 0) {
+            os << "\n";
         }
-        os << "]";
     }
 }
 
 // Prints the tensor in a structured format
-string Tensor::repr() const {
-    ostringstream oss;
+std::string Tensor::repr() const {
+    std::ostringstream oss;
     oss << "Tensor(shape=[" << shape;
     oss << "], dtype=";
 
@@ -321,13 +313,12 @@ string Tensor::repr() const {
     }
     oss << ")\n";
     // Print the tensor data
-    vector<int64_t> indices(shape.size(), 0);
     printRecursive(oss, {}, 0);  // Use a recursive method to print multi-dimensional arrays
     return oss.str();
 }
 
 // Implement the transpose method
-Tensor Tensor::transpose() const {
+/* Tensor Tensor::transpose() const {
     if (shape.size() != 2) {
         throw runtime_error("Transpose is only supported for 2D tensors.");
     }
@@ -342,16 +333,16 @@ Tensor Tensor::transpose() const {
     }
 
     return result;
-}
+} */
 
-void Tensor::add_(const double& other)
+/* void Tensor::add_(const double& other)
 {
     for (int64_t i = 0; i < size(); ++i) {
         data[i] += other;
     }
-}
+} */
 
-py::array_t<double> Tensor::numpy() const {
+/* py::array_t<double> Tensor::numpy() const {
     py::array_t<double> np_array(shape);
     auto buffer = np_array.request();
     double* ptr = static_cast<double*>(buffer.ptr);
@@ -359,4 +350,41 @@ py::array_t<double> Tensor::numpy() const {
         ptr[i] = data[i];
     }
     return np_array;
+} */
+
+int64_t Tensor::size() const {
+    return visit([](const auto& dataVec) -> int64_t {
+        return static_cast<int64_t>(dataVec.size());
+    }, data);
+}
+
+py::object Tensor::getItem(int64_t index) const {
+    return std::visit([index](const auto& dataVec) -> py::object {
+        using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
+
+        if (index < 0 || index >= static_cast<int64_t>(dataVec.size())) {
+            throw std::out_of_range("Index out of range");
+        }
+
+        ValueType value = dataVec[index];
+        return py::cast(value);
+    }, data);
+}
+
+void Tensor::setItem(int64_t index, py::object value) {
+    std::visit([index, &value](auto& dataVec) {
+        using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
+
+        if (index < 0 || index >= static_cast<int64_t>(dataVec.size())) {
+            throw std::out_of_range("Index out of range");
+        }
+
+        // Attempt to cast the Python object to the expected ValueType
+        try {
+            ValueType castedValue = value.cast<ValueType>();
+            dataVec[index] = castedValue;
+        } catch (const py::cast_error& e) {
+            throw std::runtime_error("Type mismatch in assignment. " + std::string(e.what()));
+        }
+    }, data);
 }

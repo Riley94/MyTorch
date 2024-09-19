@@ -6,13 +6,13 @@ import sys
 ext_modules = [
     Extension(
         'MyTorchCPP',
-        sources=['csrc/MyTensor.cpp', 'csrc/MyTorch.cpp', 'csrc/utils.cpp'],
+        sources=['csrc/MyTensor.cpp', 'csrc/MyTorch.cpp', 'csrc/utils.cpp', 'csrc/Proxy.cpp'],
         include_dirs=[
             'csrc/include',
             pybind11.get_include(),
         ],
         language='c++',
-        extra_compile_args=['/std:c++17'] if sys.platform == 'win32' else ['-std=c++17'],
+        extra_compile_args=['/std:c++20'] if sys.platform == 'win32' else ['-std=c++20'],
     ),
 ]
 
