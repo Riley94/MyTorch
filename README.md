@@ -37,7 +37,7 @@ For testing you will need:
 - **GoogleTest (gtest)**: latest version
 
 ## Installation
-### The following assumes you're using Linux
+### The following assumes you're using Linux or Windows (with WSL)
 **For easy setup, simply run:**
 ```bash
 chmod +x setup.sh
@@ -70,30 +70,32 @@ chmod +x setup.sh
     Make sure you have Pybind and NumPy installed:
 
     ```bash
-    pip install numpy pybind11 torch graphviz
+    pip install --upgrade numpy pybind11 torch graphviz build
     ```
 
 4. **Build the Project**:
 
     Use the provided Makefile to build the project:
 
-   
-    For Linux:
     ```bash
     make
     ```
 
-    For Windows:
-    ```bash
-    make windows
-    ```
-    This will generate the shared library file `MyTorch.<extension>` that can be imported in Python.
+    This will generate the shared library file and whl for installing via pip.
 
 6. **Use the Test Suite**
 
    ```bash
    make test
    ```
+
+7. **Install via pip locally (for now)**
+
+   ```bash
+   pip install dist/*.whl --force-reinstall
+   ```
+
+   This is also in the first line of the example notebook (network.ipynb) for easy reinstall of new builds
 
 ## Usage
 
