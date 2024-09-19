@@ -35,79 +35,65 @@ Tensor::Tensor(const std::vector<int64_t>& shape, Dtype dtype) : shape(shape), d
     }
 }
 
-void Tensor::parseList(const py::list& list, size_t depth) {
-    // Handle empty list
-    if (py::len(list) == 0) {
-        if (depth == 0) {
-            shape.clear();
-        }
-        return;
-    }
+void Tensor::parseList(const py::list& list) {
+    Dtype max_dtype = Dtype::Int64; // Default to Int64
+    std::vector<int64_t> flat_data_int64;
+    std::vector<double> flat_data_double;
+    std::vector<int64_t> inferred_shape;
 
-    // Update shape based on the current depth
-    if (depth == shape.size()) {
-        shape.push_back(py::len(list));
-    } else {
-        if (shape[depth] != static_cast<int64_t>(py::len(list))) {
-            throw std::runtime_error("Inconsistent shape in nested list");
-        }
-    }
-
-    for (auto item : list) {
-        if (py::isinstance<py::list>(item)) {
-            // Recursive call for nested lists
-            parseList(item.cast<py::list>(), depth + 1);
+    std::function<void(const py::list&, size_t)> parse_helper;
+    parse_helper = [&](const py::list& lst, size_t depth) {
+        if (depth >= inferred_shape.size()) {
+            inferred_shape.push_back(lst.size());
         } else {
-            if (!has_determined_dtype) {
-                // First time encountering data, determine the dtype
-                has_determined_dtype = true;
-
-                if (py::isinstance<py::float_>(item)) {
-                    dtype = Dtype::Float64;
-                    data = std::vector<double>();
-                } else if (py::isinstance<py::int_>(item)) {
-                    int64_t value = item.cast<int64_t>();
-                    if (value > std::numeric_limits<int32_t>::max() ||
-                        value < std::numeric_limits<int32_t>::min()) {
-                        dtype = Dtype::Int64;
-                        data = std::vector<int64_t>();
-                    } else {
-                        dtype = Dtype::Int32;
-                        data = std::vector<int32_t>();
-                    }
-                } else {
-                    throw std::runtime_error("Unsupported data type in list");
-                }
-            }
-
-            // Store the value into the appropriate vector in 'data'
-            if (dtype == Dtype::Float64) {
-                if (py::isinstance<py::float_>(item) || py::isinstance<py::int_>(item)) {
-                    double val = item.cast<double>();
-                    std::get<std::vector<double>>(data).push_back(val);
-                } else {
-                    throw std::runtime_error("Inconsistent data types in list");
-                }
-            } else if (dtype == Dtype::Int64) {
-                if (py::isinstance<py::int_>(item)) {
-                    int64_t val = item.cast<int64_t>();
-                    std::get<std::vector<int64_t>>(data).push_back(val);
-                } else {
-                    throw std::runtime_error("Expected integer value in list");
-                }
-            } else if (dtype == Dtype::Int32) {
-                if (py::isinstance<py::int_>(item)) {
-                    int64_t val = item.cast<int64_t>();
-                    if (val > std::numeric_limits<int32_t>::max() ||
-                        val < std::numeric_limits<int32_t>::min()) {
-                        throw std::runtime_error("Integer value out of range for int32_t");
-                    }
-                    std::get<std::vector<int32_t>>(data).push_back(static_cast<int32_t>(val));
-                } else {
-                    throw std::runtime_error("Expected integer value in list");
-                }
+            if (inferred_shape[depth] != lst.size()) {
+                throw std::invalid_argument("Inconsistent dimensions in list for Tensor initialization.");
             }
         }
+
+        for (auto item : lst) {
+            if (py::isinstance<py::list>(item)) {
+                parse_helper(item.cast<py::list>(), depth + 1);
+            }
+            else if (py::isinstance<py::float_>(item)) {
+                double val = item.cast<double>();
+                if (max_dtype != Dtype::Float64) {
+                    // Promote existing int64 data to double
+                    for (const auto& int_val : flat_data_int64) {
+                        flat_data_double.push_back(static_cast<double>(int_val));
+                    }
+                    flat_data_int64.clear();
+                    max_dtype = Dtype::Float64;
+                }
+                flat_data_double.push_back(val);
+            }
+            else if (py::isinstance<py::int_>(item)) {
+                int64_t val = item.cast<int64_t>();
+                if (max_dtype == Dtype::Float64) {
+                    flat_data_double.push_back(static_cast<double>(val));
+                } else {
+                    flat_data_int64.push_back(val);
+                }
+            }
+            else {
+                throw std::invalid_argument("Unsupported data type in list for Tensor initialization.");
+            }
+        }
+    };
+
+    // Start parsing
+    parse_helper(list, 0);
+
+    // Set the shape
+    shape = inferred_shape;
+
+    // Assign data based on max_dtype
+    if (max_dtype == Dtype::Float64) {
+        dtype = Dtype::Float64;
+        data = std::move(flat_data_double);
+    } else {
+        dtype = Dtype::Int64;
+        data = std::move(flat_data_int64);
     }
 }
 
@@ -120,21 +106,53 @@ Tensor::Tensor(const py::object& obj) {
             // Handle empty tensor initialization
             shape = {};
             data = {};
+            dtype = Dtype::Float64; // default is double
         } else {
             parseList(list);
         }
     }
     // Handle case where a NumPy array is passed
-    else if (py::isinstance<py::array_t<double>>(obj)) {
-        auto np_array = obj.cast<py::array_t<double>>();
+    else if (py::isinstance<py::array>(obj)) {
+        auto np_array = obj.cast<py::array>().attr("copy")(py::arg("order") = 'C').cast<py::array>(); // ensure contiguous
         auto buffer = np_array.request();
+
+        // Extract shape information
         shape = std::vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
-        data = std::vector<double>(static_cast<double*>(buffer.ptr), static_cast<double*>(buffer.ptr) + buffer.size);
+
+        // Determine dtype based on buffer.format
+        if (buffer.format == py::format_descriptor<double>::format()) {
+            dtype = Dtype::Float64;
+            std::vector<double> tensor_data(reinterpret_cast<double*>(buffer.ptr),
+                                            reinterpret_cast<double*>(buffer.ptr) + buffer.size);
+            data = std::move(tensor_data);
+        }
+        else if (buffer.format == py::format_descriptor<float>::format()) {
+            dtype = Dtype::Float32;
+            std::vector<float> tensor_data(reinterpret_cast<float*>(buffer.ptr),
+                                           reinterpret_cast<float*>(buffer.ptr) + buffer.size);
+            data = std::move(tensor_data);
+        }
+        else if (buffer.format == py::format_descriptor<int64_t>::format()) {
+            dtype = Dtype::Int64;
+            std::vector<int64_t> tensor_data(reinterpret_cast<int64_t*>(buffer.ptr),
+                                             reinterpret_cast<int64_t*>(buffer.ptr) + buffer.size);
+            data = std::move(tensor_data);
+        }
+        else if (buffer.format == py::format_descriptor<int32_t>::format()) {
+            dtype = Dtype::Int32;
+            std::vector<int32_t> tensor_data(reinterpret_cast<int32_t*>(buffer.ptr),
+                                             reinterpret_cast<int32_t*>(buffer.ptr) + buffer.size);
+            data = std::move(tensor_data);
+        }
+        else {
+            throw std::invalid_argument("Unsupported NumPy array data type for Tensor initialization.");
+        }
     }
     else {
         throw std::invalid_argument("Tensor initialization error: Unsupported type or parameter combination.");
     }
 }
+
 
 int64_t Tensor::getFlatIndex(const std::vector<int64_t>& indices) const {
     assert(indices.size() == shape.size());

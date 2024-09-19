@@ -106,7 +106,7 @@ public:
 
 private:
     void printRecursive(std::ostream& os, const std::vector<int64_t>& indices, size_t dim) const;
-    void parseList(const py::list& list, size_t depth = 0);
+    void parseList(const py::list& list);
     
 };
 
