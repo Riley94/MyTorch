@@ -29,9 +29,10 @@ sudo mv lib/*.a /usr/lib/
 # Go back to the original directory ~/MyTorch
 cd ~/MyTorch
 
-# Create and activate a Python 3.11 virtual environment
+# Create a Python 3.12 virtual environment
 python3.12 -m venv .
-source ./bin/activate
 
-# Output a success message
-echo "Python 3.12 environment is ready and activated."
+# Output a message to the user
+echo "Python 3.12 environment is ready."
+echo "To activate the virtual environment, run:"
+echo "source ./bin/activate"
