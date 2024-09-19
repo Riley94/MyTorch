@@ -13,8 +13,8 @@ sudo apt install software-properties-common
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
 
-# Install Python 3.11, development libraries, and venv
-sudo apt install -y python3.11 python3.11-dev python3.11-venv
+# Install Python 3.12, development libraries, and venv
+sudo apt install -y python3.12 python3.12-dev python3.12-venv
 
 # Install CMake
 sudo apt install -y cmake
@@ -30,8 +30,8 @@ sudo mv lib/*.a /usr/lib/
 cd ~/MyTorch
 
 # Create and activate a Python 3.11 virtual environment
-python3.11 -m venv .
+python3.12 -m venv .
 source ./bin/activate
 
 # Output a success message
-echo "Python 3.11 environment is ready and activated."
+echo "Python 3.12 environment is ready and activated."
