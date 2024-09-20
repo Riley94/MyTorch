@@ -7,11 +7,9 @@
 #include <cstdint>
 #include <vector>
 #include <variant>
-#include "utils.h"
+#include "helpers.h"
 #include "Proxy.h"
 #include "pybind_includes.h"
-
-enum class Dtype;
 
 using tensorData = std::variant<std::vector<double>,
                     std::vector<float>, 
@@ -26,12 +24,9 @@ private:
 
     bool has_determined_dtype = false; // Flag to check if dtype is already set in the parseList function
 
-    // Computes the total number of elements in the tensor based on its shape
-    int64_t getFlatIndex(const std::vector<int64_t>& indices) const;
-
 public:
 
-    Proxy operator[](int64_t index);
+    /* ------------------- Constructors ------------------- */
     
     // Constructor to initialize the tensor with a given shape and fill it with zeros
     Tensor(const std::vector<int64_t>& shape);
@@ -49,23 +44,20 @@ public:
     // python objects
     Tensor(const py::object& obj);
 
-    // Get the shape of the tensor
-    std::vector<int64_t> getShape() const { return shape; }
-
-    // Get the number of elements in the tensor
-    int64_t size() const;
-
-    template <typename T>
-    T getValue(const std::vector<int64_t>& indices) const;
+    /* --------------------- Operators --------------------- */
 
     // Tensor addition (element-wise)
     Tensor operator+(const Tensor& other) const;
 
+    // Scalar addition
+    template<typename ScalarType>
+    Tensor operator+(ScalarType scalar) const;
+
     // Tensor multiplication (element-wise)
     Tensor operator*(const Tensor& other) const;
 
-    template<typename T>
-    Tensor operator*(const T& other) const;
+    template<typename ScalarType>
+    Tensor operator*(const ScalarType& other) const;
 
     // Tensor subtraction (element-wise)
     Tensor operator-(const Tensor& other) const;
@@ -76,37 +68,65 @@ public:
     // Unary negation
     Tensor operator-() const;
 
-    //Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
+    // Indexing operator
+    Proxy operator[](int64_t index);
 
-    // Getter for item at index
-    py::object getItem(int64_t index) const;
-
-    // Setter for item at index
-    void setItem(int64_t index, py::object value);
+    /* ------------------------ Math ------------------------ */
 
     // Tensor dot product
-    //Tensor dot(const Tensor& other) const;
+    Tensor dot(const Tensor& other) const;
+
+    //void add_(const double& other);
+
+    //Tensor outer_product(const Tensor& other) const;
+
+    /* --------------------- Conversion --------------------- */
+
+    //Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
 
     //Tensor transpose() const;
     //py::array_t<double> numpy() const;
 
-    //Tensor outer_product(const Tensor& other) const;
+    /* ---------------------- Display ---------------------- */
 
     // Print tensor elements
     std::string repr() const;
 
-    //void add_(const double& other);
+    
 
-    //vector<double> get_data() const { return data; }
+    /* ---------------------- Getters ---------------------- */
+
+    // simple getters
     std::vector<int64_t> get_shape() const { return shape; }
     Dtype get_dtype() const { return dtype; }
     tensorData get_data() const { return data; }
+    
+    // Get the number of elements in the tensor
+    int64_t size() const;
 
+    // Getter for item at index
+    py::object getItem(int64_t index) const;
+
+    /* ---------------------- Setters ---------------------- */
+
+    // simple setters
     void set_data(const tensorData& data) { this->data = std::move(data); }
 
+    template <typename T>
+    void set_data(const std::vector<T>& dataVec) {
+        data = dataVec;
+    }
+
+    // Setter for item at index
+    void setItem(int64_t index, py::object value);
+
 private:
+    // Helper function to print the tensor elements recursively
     void printRecursive(std::ostream& os, const std::vector<int64_t>& indices, size_t dim) const;
+    // Helper function to parse a Python list and initialize the tensor
     void parseList(const py::list& list);
+    // Computes the total number of elements in the tensor based on its shape
+    int64_t getFlatIndex(const std::vector<int64_t>& indices) const;
     
 };
 
@@ -138,16 +158,20 @@ Tensor::Tensor(const std::vector<int64_t>& shape, const std::vector<T>& dataVec,
     data = dataVec;
 }
 
-template<typename T>
-Tensor Tensor::operator*(const T& other) const {
-    Tensor result(shape, dtype); // Retain the dtype of the current tensor
+template<typename ScalarType>
+Tensor Tensor::operator*(const ScalarType& other) const {
+    // Determine the resulting dtype based on tensor's dtype and scalar's type
+    Dtype result_dtype = promote_dtype_with_scalar<ScalarType>(dtype);
+    
+    // Create a new tensor with the promoted dtype
+    Tensor result(shape, result_dtype);
 
     std::visit([&](const auto& dataVec) {
         using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
 
         // Check if T can be converted to ValueType
-        static_assert(std::is_arithmetic_v<T>, "Scalar must be an arithmetic type");
-        if constexpr (!std::is_convertible_v<T, ValueType>) {
+        static_assert(std::is_arithmetic_v<ScalarType>, "Scalar must be an arithmetic type");
+        if constexpr (!std::is_convertible_v<ScalarType, ValueType>) {
             throw std::runtime_error("Incompatible types for multiplication");
         }
 

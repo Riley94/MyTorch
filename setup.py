@@ -7,7 +7,7 @@ headers = glob('csrc/include/*.h')
 ext_modules = [
     Pybind11Extension(
         'MyTorchCPP',
-        sources=['csrc/MyTensor.cpp', 'csrc/MyTorch.cpp', 'csrc/utils.cpp', 'csrc/Proxy.cpp'],
+        sources=['csrc/MyTensor.cpp', 'csrc/MyTorch.cpp', 'csrc/utils.cpp', 'csrc/Proxy.cpp', 'csrc/helpers.cpp'],
         include_dirs=['csrc/include'],
         depends=headers,
         cxx_std=20,  # Simplifies setting the C++ standard

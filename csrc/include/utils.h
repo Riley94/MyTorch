@@ -4,45 +4,20 @@
 #include <vector>
 #include "pybind_includes.h"
 
-class Tensor; // Forward declaration
+class Tensor; // Forward declarations
+enum class Dtype;
 
-enum class Dtype {
-    Float32,
-    Float64,
-    Int32,
-    Int64
-};
-
-// Type mapping from Dtype to C++ types
-template <Dtype dtype>
-struct DtypeToType;
-
-template <>
-struct DtypeToType<Dtype::Float64> {
-    using type = double;
-};
-
-template <>
-struct DtypeToType<Dtype::Float32> {
-    using type = float;
-};
-
-template <>
-struct DtypeToType<Dtype::Int64> {
-    using type = int64_t;
-};
-
-template <>
-struct DtypeToType<Dtype::Int32> {
-    using type = int32_t;
-};
-
-int64_t numElements(const std::vector<int64_t>& shape);
-Tensor ones_like(const Tensor& other, const Dtype& dtype = Dtype::Float64);
-Tensor ones(const py::tuple& shape, const Dtype& dtype = Dtype::Float64);
-Tensor zeros_like(const Tensor& other, const Dtype& dtype = Dtype::Float64);
-Tensor zeros(const py::tuple& shape, const Dtype& dtype = Dtype::Float64);
-Tensor rand_like(const Tensor& other, const Dtype& dtype = Dtype::Float64);
-Tensor rand(const py::tuple& shape, const Dtype& dtype = Dtype::Float64);
+// return a tensor of ones with the same shape and dtype as the input tensor
+Tensor ones_like(const Tensor& other, const Dtype& dtype);
+// return a tensor of ones with the given shape and dtype
+Tensor ones(const py::tuple& shape, const Dtype& dtype);
+// return a tensor of zeros with the same shape and dtype as the input tensor
+Tensor zeros_like(const Tensor& other, const Dtype& dtype);
+// return a tensor of zeros with the given shape and dtype
+Tensor zeros(const py::tuple& shape, const Dtype& dtype);
+// return a tensor of random values with the same shape and dtype as the input tensor
+Tensor rand_like(const Tensor& other, const Dtype& dtype);
+// return a tensor of random values with the given shape and dtype
+Tensor rand(const py::tuple& shape, const Dtype& dtype);
+// create a tensor from a numpy array
 Tensor from_numpy(const py::array& np_array);
-Dtype promote_types(const Dtype& dtype1, const Dtype& dtype2);

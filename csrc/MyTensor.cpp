@@ -1,7 +1,6 @@
 #include <typeinfo>
 
 #include "MyTensor.h"
-#include "helpers.h"
 #include "pybind_includes.h"
 
 Tensor::Tensor(const std::vector<int64_t>& shape) : shape(shape) {
@@ -153,7 +152,6 @@ Tensor::Tensor(const py::object& obj) {
     }
 }
 
-
 int64_t Tensor::getFlatIndex(const std::vector<int64_t>& indices) const {
     assert(indices.size() == shape.size());
     int64_t flatIndex = 0;
@@ -162,26 +160,6 @@ int64_t Tensor::getFlatIndex(const std::vector<int64_t>& indices) const {
         flatIndex = flatIndex * shape[i] + indices[i];
     }
     return flatIndex;
-}
-
-template <typename T>
-T Tensor::getValue(const std::vector<int64_t>& indices) const {
-    int64_t flatIndex = getFlatIndex(indices);
-
-    // Ensure that T matches the data type stored
-    return std::visit([flatIndex](const auto& dataVec) -> T {
-        using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
-
-        if constexpr (!std::is_same_v<T, ValueType>) {
-            throw std::runtime_error("Requested type does not match tensor's data type");
-        }
-
-        if (flatIndex < 0 || flatIndex >= static_cast<int64_t>(dataVec.size())) {
-            throw std::out_of_range("Index out of range");
-        }
-
-        return dataVec[flatIndex];
-    }, data);
 }
 
 Proxy Tensor::operator[](int64_t index) {
@@ -242,6 +220,32 @@ Tensor Tensor::operator+(const Tensor& other) const {
     return elementwise_binary_op(*this, other, std::plus<>(), "addition");
 }
 
+template <typename ScalarType>
+Tensor Tensor::operator+(ScalarType scalar) const {
+    // Determine the resulting dtype based on tensor's dtype and scalar's type
+    Dtype result_dtype = promote_dtype_with_scalar<ScalarType>(dtype);
+    
+    // Create a new tensor with the promoted dtype
+    Tensor result(shape, result_dtype);
+    
+    // Visit the current tensor's data and perform the addition
+    std::visit([&](const auto& dataVec) {
+        using CurrentDataType = typename std::decay_t<decltype(dataVec)>::value_type;
+        using ResultDataType = DtypeToCppType_t<result_dtype>;
+        
+        std::vector<ResultDataType> result_data;
+        result_data.reserve(dataVec.size());
+        
+        for (const auto& val : dataVec) {
+            result_data.emplace_back(static_cast<ResultDataType>(val) + static_cast<ResultDataType>(scalar));
+        }
+        
+        result.set_data(result_data);
+    }, data);
+    
+    return result;
+}
+
 Tensor Tensor::operator-(const Tensor& other) const {
     return elementwise_binary_op(*this, other, std::minus<>(), "subtraction");
 }
@@ -267,22 +271,73 @@ Tensor Tensor::operator-() const {
     return output;
 }
 
-/*Tensor Tensor::dot(const Tensor& other) const {
-    checkDimensions(shape, other.shape);
-
-    vector<int64_t> result_shape = {shape[0], other.shape[1]};
-    vector<double> result_data(result_shape[0] * result_shape[1], 0.0);
-
-    for (int64_t i = 0; i < shape[0]; ++i) { // Loop over rows of first matrix
-        for (int64_t j = 0; j < other.shape[1]; ++j) { // Loop over columns of second matrix
-            for (int64_t k = 0; k < shape[1]; ++k) { // Loop over columns of first and rows of second
-                result_data[i * result_shape[1] + j] += data[i * shape[1] + k] * other.data[k * other.shape[1] + j];
+template <typename ResultType, typename LhsType, typename RhsType>
+void compute_dot_product(
+    const std::vector<int64_t>& shape, 
+    const std::vector<int64_t>& other_shape, 
+    const LhsType& lhs_data, 
+    const RhsType& rhs_data, 
+    std::vector<ResultType>& result_data) 
+{
+    for (int64_t i = 0; i < shape[0]; ++i) { // Loop over rows of the first matrix
+        for (int64_t j = 0; j < other_shape[1]; ++j) { // Loop over columns of the second matrix
+            for (int64_t k = 0; k < shape[1]; ++k) { // Loop over columns of the first and rows of the second
+                result_data[i * other_shape[1] + j] += 
+                    static_cast<ResultType>(lhs_data[i * shape[1] + k]) * 
+                    static_cast<ResultType>(rhs_data[k * other_shape[1] + j]);
             }
         }
     }
+}
 
-    return Tensor(result_shape, result_data);
-}*/
+Tensor Tensor::dot(const Tensor& other) const {
+    checkDimensions(shape, other.get_shape());
+    
+    // Determine the result dtype based on both tensors
+    Dtype result_dtype = promote_types(dtype, other.get_dtype());
+    std::vector<int64_t> result_shape = {shape[0], other.shape[1]}; // m x p
+
+    Tensor result(result_shape, result_dtype);
+
+    // Use std::visit to handle the variant data for both tensors
+    auto dotProductLambda = [&](const auto& lhs_data, const auto& rhs_data) {
+        using LhsType = std::decay_t<decltype(lhs_data)>;
+        using RhsType = std::decay_t<decltype(rhs_data)>;
+        
+        switch (result_dtype) {
+            case Dtype::Float32: {
+                std::vector<float> result_data(result_shape[0] * result_shape[1], 0.0f);
+                compute_dot_product<float>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
+                result.set_data(std::move(result_data));
+                break;
+            }
+            case Dtype::Float64: {
+                std::vector<double> result_data(result_shape[0] * result_shape[1], 0.0);
+                compute_dot_product<double>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
+                result.set_data(std::move(result_data));
+                break;
+            }
+            case Dtype::Int32: {
+                std::vector<int32_t> result_data(result_shape[0] * result_shape[1], 0);
+                compute_dot_product<int32_t>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
+                result.set_data(std::move(result_data));
+                break;
+            }
+            case Dtype::Int64: {
+                std::vector<int64_t> result_data(result_shape[0] * result_shape[1], 0);
+                compute_dot_product<int64_t>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
+                result.set_data(std::move(result_data));
+                break;
+            }
+            default:
+                throw std::runtime_error("Unsupported dtype for dot product");
+        }
+    };
+
+    std::visit(dotProductLambda, this->data, other.get_data());
+    
+    return result;
+}
 
 void Tensor::printRecursive(std::ostream& os, const std::vector<int64_t>& indices, size_t dim) const {
     if (dim == shape.size()) {

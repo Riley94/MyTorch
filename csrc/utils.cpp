@@ -1,16 +1,6 @@
+#include "helpers.h"
 #include "utils.h"
 #include "MyTensor.h"
-
-int64_t numElements(const std::vector<int64_t>& shape) {
-    if (shape.empty()) {
-        return 0;
-    }
-    int64_t totalSize = 1;
-    for (int64_t s : shape) {
-        totalSize *= s;
-    }
-    return totalSize;
-}
 
 Tensor ones_like(const Tensor& other, const Dtype& dtype) {
     return Tensor(other.get_shape(), std::vector<double>(other.size(), 1.0), dtype);
@@ -83,6 +73,7 @@ Tensor rand(const py::tuple& shape, const Dtype& dtype) {
     return rand_like(Tensor(temp), dtype);
 }
 
+// given a numpy array and a dtype, create a tensor
 template <typename T>
 Tensor tensor_from_numpy(const py::array& np_array, Dtype dtype) {
     auto buffer_info = np_array.request();
@@ -107,17 +98,5 @@ Tensor from_numpy(const py::array& np_array) {
         return tensor_from_numpy<float>(np_array, Dtype::Float32);
     } else {
         throw std::invalid_argument("Unsupported data type provided");
-    }
-}
-
-Dtype promote_types(const Dtype& dtype1, const Dtype& dtype2) {
-    if (dtype1 == Dtype::Float64 || dtype2 == Dtype::Float64) {
-        return Dtype::Float64;
-    } else if (dtype1 == Dtype::Float32 || dtype2 == Dtype::Float32) {
-        return Dtype::Float32;
-    } else if (dtype1 == Dtype::Int64 || dtype2 == Dtype::Int64) {
-        return Dtype::Int64;
-    } else {
-        return Dtype::Int32;
     }
 }
