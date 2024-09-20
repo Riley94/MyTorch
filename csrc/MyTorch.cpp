@@ -29,17 +29,15 @@ PYBIND11_MODULE(MyTorchCPP, m) {
         }, py::is_operator())
         .def("__sub__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator-))
         .def("__truediv__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator/))
-        .def("__neg__", static_cast<Tensor (Tensor::*)(const Tensor&) const>(&Tensor::operator-))
+        .def("__neg__", static_cast<Tensor (Tensor::*)() const>(&Tensor::operator-))
         //.def("transpose", static_cast<Tensor (Tensor::*)() const>(&Tensor::transpose))
         //.def("numpy", &Tensor::numpy)
         .def("__repr__", &Tensor::repr)
         // Overload for single argument indexing (e.g., tensor[0])
         .def("__getitem__", &Tensor::getItem)
-        .def("__setitem__", &Tensor::setItem)
+        .def("__setitem__", &Tensor::setItem);
         // Overload for two argument indexing (e.g., tensor[0, 1] or tensor[:, 0])
         //.def("__getitem__", &Tensor::slice)
-        //.def("get_data", &Tensor::get_data)
-        .def("get_shape", &Tensor::get_shape);
 
     py::enum_<Dtype>(m, "Dtype")
         .value("Float32", Dtype::Float32)

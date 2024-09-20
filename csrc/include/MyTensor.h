@@ -74,7 +74,7 @@ public:
     Tensor operator/(const Tensor& other) const;
 
     // Unary negation
-    //Tensor operator-() const;
+    Tensor operator-() const;
 
     //Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
 

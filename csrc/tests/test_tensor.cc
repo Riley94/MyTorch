@@ -116,13 +116,18 @@ TEST_F(TensorTest, Division) {
 }
 
 // Test Tensor Negation
-/* TEST_F(TensorTest, Negation) {
+TEST_F(TensorTest, Negation) {
     Tensor result = -tensor1;
+    std::vector<double> result_data = extractDataAsDouble(result);
 
     // Check if result matches expected values
-    vector<double> expected_data = {-1.0, -2.0, -3.0, -4.0};
-    EXPECT_EQ(result.get_data(), expected_data) << "Negation failed";
-} */
+    std::vector<double> expected_data = {-1.0, -2.0, -3.0, -4.0};
+    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in division result";
+
+    for (size_t i = 0; i < expected_data.size(); ++i) {
+        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for division";
+    }
+}
 
 // Test Tensor Dot Product
 /* TEST_F(TensorTest, DotProduct) {

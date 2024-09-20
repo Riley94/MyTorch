@@ -254,15 +254,18 @@ Tensor Tensor::operator/(const Tensor& other) const {
     return elementwise_binary_op(*this, other, std::divides<>(), "division");
 }
 
-/*Tensor Tensor::operator-() const {
-    Tensor result(shape);
-    for (int64_t i = 0; i < size(); ++i) {
-        result.data[i] = -this->data[i];
-    }
-    return result;
-}*/
-
-
+Tensor Tensor::operator-() const {
+    Tensor output(shape, dtype);
+    std::visit([&](auto&& dataVec) {
+        using VecType = std::decay_t<decltype(dataVec)>;
+        VecType result_data(dataVec.size());
+        for (size_t i = 0; i < dataVec.size(); ++i) {
+            result_data[i] = -dataVec[i];
+        }
+        output.set_data(result_data);
+    }, data);
+    return output;
+}
 
 /*Tensor Tensor::dot(const Tensor& other) const {
     checkDimensions(shape, other.shape);
