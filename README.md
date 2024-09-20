@@ -62,8 +62,9 @@ For testing you will need:
     ```
     **On windows**
    ```bash
-   .\Scripts\Activate.ps1 (or activate.bat if using cmd)
+   .\Scripts\Activate.ps1
    ```
+   or activate.bat if using cmd
 
 4. **Install Dependencies**:
 
