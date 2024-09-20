@@ -1,6 +1,9 @@
 #pragma once
 
 #include <variant>
+#include <functional>
+#include <cstdint>
+#include <type_traits>
 
 class Proxy {
 private:
