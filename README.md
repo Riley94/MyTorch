@@ -38,11 +38,7 @@ For testing you will need:
 
 ## Installation
 ### The following assumes you're using Linux or Windows (with WSL)
-**For easy setup, simply run:**
-```bash
-chmod +x setup.sh
-./setup.sh
-```
+
 **This installs and sets up necessary packages, including gtest and python and dev libs, and then creates a python venv in the current directory. (same as the following, except the pip installs)**
 
 1. **Clone the repository**:
@@ -51,21 +47,25 @@ chmod +x setup.sh
     cd MyTorch
     ```
 
-2. **Create Environment (Optional, but recommended)**:
-
-    Make sure you have Python and pyvenv installed:
-
+2. **For easy setup on Linux, simply run:**
     ```bash
-    python -m venv .
+    chmod +x setup.sh
+    ./setup.sh
     ```
-
-    Activate venv:
-
+    **If on Windows, start a Powershell window with admin priveleges and run:**
+    ```bash
+    .\setup.bat
+    ```
+    **Activate venv**:
     ```bash
     source ./bin/activate
     ```
+    **On windows**
+   ```bash
+   .\Scripts\Activate.ps1 (or activate.bat if using cmd)
+   ```
 
-3. **Install Dependencies**:
+4. **Install Dependencies**:
 
     Make sure you have Pybind and NumPy installed:
 
@@ -73,7 +73,7 @@ chmod +x setup.sh
     pip install --upgrade numpy pybind11 torch graphviz build
     ```
 
-4. **Build the Project**:
+5. **Build the Project**:
 
     Use the provided Makefile to build the project:
 
