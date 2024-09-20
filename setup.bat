@@ -70,13 +70,10 @@ cd %~dp0
 REM Create and activate a Python 3.12 virtual environment
 ECHO Creating Python 3.12 virtual environment...
 
-python -m venv venv
-
-REM Activate the virtual environment
-CALL venv\Scripts\activate.bat
+python -m venv .
 
 ECHO.
-ECHO Python 3.12 environment is ready and activated.
+ECHO Python 3.12 environment is ready. Activate it by running .\Scripts\Activate.ps1
 ECHO.
 
 PAUSE
