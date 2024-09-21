@@ -100,21 +100,4 @@ For testing you will need:
 
 ## Usage
 
-Once built, you can import the `MyTensor` module in Python and start using it:
-
-```python
-import MyTorch
-
-# Initialize a tensor from a Python list
-tensor1 = MyTorch.Tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-tensor2 = MyTorch.Tensor([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]])
-
-# Perform tensor addition
-result = tensor1 + tensor2
-
-# Print the result
-print(result)
-
-# Perform inner product
-dot_product = tensor1.innerProduct(tensor2)
-print("Dot product:", dot_product)
+See network.ipynb for proper usage.
