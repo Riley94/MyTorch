@@ -98,6 +98,12 @@ For testing you will need:
 
    This is also in the first line of the example notebook (network.ipynb) for easy reinstall of new builds
 
+8. **Clean Build**
+
+   ```bash
+   make clean
+   ```
+
 ## Usage
 
 See network.ipynb for proper usage.
