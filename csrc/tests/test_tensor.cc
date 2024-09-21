@@ -54,89 +54,61 @@ std::vector<double> extractDataAsDouble(const Tensor& tensor) {
     return data;
 }
 
-TEST_F(TensorTest, Addition) {
-    Tensor result = tensor1 + tensor2;
-
-    std::vector<double> expected_data = {2.0, 3.0, 4.0, 5.0};
-
-    std::vector<double> result_data = extractDataAsDouble(result);
-
-    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in addition result";
+void checkData(const std::vector<double>& result_data, const std::vector<double>& expected_data, std::string operation) {
+    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in " << operation << " result";
 
     for (size_t i = 0; i < expected_data.size(); ++i) {
-        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i;
+        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for " << operation;
     }
+}
+
+TEST_F(TensorTest, Addition) {
+    Tensor result = tensor1 + tensor2;
+    std::vector<double> expected_data = {2.0, 3.0, 4.0, 5.0};
+    std::vector<double> result_data = extractDataAsDouble(result);
+    checkData(result_data, expected_data, "addition");
 }
 
 TEST_F(TensorTest, Multiplication) {
     Tensor result = tensor1 * tensor2;
     Tensor resultScalar = tensor1 * 2.0;
-
     std::vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
     std::vector<double> expected_data_scalar = {2.0, 4.0, 6.0, 8.0};
-
     std::vector<double> result_data = extractDataAsDouble(result);
     std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
-
-    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in multiplication result";
-    EXPECT_EQ(result_data_scalar.size(), expected_data_scalar.size()) << "Size mismatch in scalar multiplication result";
-
-    for (size_t i = 0; i < expected_data.size(); ++i) {
-        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for element-wise multiplication";
-        EXPECT_DOUBLE_EQ(result_data_scalar[i], expected_data_scalar[i]) << "Mismatch at index " << i << " for scalar multiplication";
-    }
+    checkData(result_data, expected_data, "multiplication");
+    checkData(result_data_scalar, expected_data_scalar, "multiplication with scalar");
 }
 
 TEST_F(TensorTest, Subtraction) {
     Tensor result = tensor1 - tensor2;
-
     std::vector<double> expected_data = {0.0, 1.0, 2.0, 3.0};
-
     std::vector<double> result_data = extractDataAsDouble(result);
-
-    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in subtraction result";
-
-    for (size_t i = 0; i < expected_data.size(); ++i) {
-        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for subtraction";
-    }
+    checkData(result_data, expected_data, "subtraction");
 }
 
 TEST_F(TensorTest, Division) {
     Tensor result = tensor1 / tensor2;
-
     std::vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
-
     std::vector<double> result_data = extractDataAsDouble(result);
-
-    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in division result";
-
-    for (size_t i = 0; i < expected_data.size(); ++i) {
-        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for division";
-    }
+    checkData(result_data, expected_data, "division");
 }
 
 // Test Tensor Negation
 TEST_F(TensorTest, Negation) {
     Tensor result = -tensor1;
     std::vector<double> result_data = extractDataAsDouble(result);
-
-    // Check if result matches expected values
     std::vector<double> expected_data = {-1.0, -2.0, -3.0, -4.0};
-    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in division result";
-
-    for (size_t i = 0; i < expected_data.size(); ++i) {
-        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for division";
-    }
+    checkData(result_data, expected_data, "negation");
 }
 
 // Test Tensor Dot Product
-/* TEST_F(TensorTest, DotProduct) {
+TEST_F(TensorTest, DotProduct) {
     Tensor result = tensor1.dot(tensor2);
-
-    // Check if result matches expected values
-    vector<double> expected_data = {3.0, 3.0, 7.0, 7.0};
-    EXPECT_EQ(result.get_data(), expected_data) << "Dot product failed";
-} */
+    std::vector<double> result_data = extractDataAsDouble(result);
+    std::vector<double> expected_data = {3.0, 3.0, 7.0, 7.0};
+    checkData(result_data, expected_data, "dot product");
+}
 
 // Test Tensor Transpose
 /* TEST_F(TensorTest, Transpose) {
