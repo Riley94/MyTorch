@@ -11,6 +11,8 @@
 #include "Proxy.h"
 #include "pybind_includes.h"
 
+namespace mytorch {
+
 using tensorData = std::variant<std::vector<double>,
                     std::vector<float>, 
                     std::vector<int32_t>, 
@@ -51,7 +53,7 @@ public:
 
     // Scalar addition
     template<typename ScalarType>
-    Tensor operator+(ScalarType scalar) const;
+    Tensor operator+(const ScalarType& scalar) const;
 
     // Tensor multiplication (element-wise)
     Tensor operator*(const Tensor& other) const;
@@ -62,8 +64,16 @@ public:
     // Tensor subtraction (element-wise)
     Tensor operator-(const Tensor& other) const;
 
+    // Scalar subtraction
+    template<typename ScalarType>
+    Tensor operator-(const ScalarType& scalar) const;
+
     // Tensor division (element-wise)
     Tensor operator/(const Tensor& other) const;
+
+    // Scalar division
+    template<typename ScalarType>
+    Tensor operator/(const ScalarType& scalar) const;
 
     // Unary negation
     Tensor operator-() const;
@@ -84,7 +94,7 @@ public:
 
     //Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
 
-    //Tensor transpose() const;
+    Tensor transpose() const;
     //py::array_t<double> numpy() const;
 
     /* ---------------------- Display ---------------------- */
@@ -110,12 +120,10 @@ public:
     /* ---------------------- Setters ---------------------- */
 
     // simple setters
-    void set_data(const tensorData& data) { this->data = std::move(data); }
+    void set_data(const tensorData& other_data) { this->data = std::move(other_data); }
 
     template <typename T>
-    void set_data(const std::vector<T>& dataVec) {
-        data = dataVec;
-    }
+    void set_data(const std::vector<T>& dataVec) { data = std::move(dataVec); }
 
     // Setter for item at index
     void setItem(int64_t index, py::object value);
@@ -158,29 +166,54 @@ Tensor::Tensor(const std::vector<int64_t>& shape, const std::vector<T>& dataVec,
     data = dataVec;
 }
 
-template<typename ScalarType>
-Tensor Tensor::operator*(const ScalarType& other) const {
+// helper function. had to define here
+template<typename ScalarType, typename Operation>
+Tensor scalar_operation(const Tensor& tensor, const ScalarType& scalar, Operation op) {
     // Determine the resulting dtype based on tensor's dtype and scalar's type
-    Dtype result_dtype = promote_dtype_with_scalar<ScalarType>(dtype);
-    
+    Dtype result_dtype = promote_dtype_with_scalar<ScalarType>(tensor.get_dtype());
+
     // Create a new tensor with the promoted dtype
-    Tensor result(shape, result_dtype);
+    Tensor result(tensor.get_shape(), result_dtype);
 
     std::visit([&](const auto& dataVec) {
         using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
 
-        // Check if T can be converted to ValueType
+        // Check if ScalarType can be converted to ValueType
         static_assert(std::is_arithmetic_v<ScalarType>, "Scalar must be an arithmetic type");
         if constexpr (!std::is_convertible_v<ScalarType, ValueType>) {
-            throw std::runtime_error("Incompatible types for multiplication");
+            throw std::runtime_error("Incompatible types for operation");
         }
 
         std::vector<ValueType> result_data(dataVec.size());
         for (size_t i = 0; i < dataVec.size(); ++i) {
-            result_data[i] = dataVec[i] * static_cast<ValueType>(other);
+            result_data[i] = op(dataVec[i], static_cast<ValueType>(scalar));
         }
-        result.data = std::move(result_data);
-    }, data);
+
+        result.set_data(result_data);
+    }, tensor.get_data());
 
     return result;
 }
+
+template<typename ScalarType>
+Tensor Tensor::operator*(const ScalarType& scalar) const {
+    return scalar_operation(*this, scalar, std::multiplies<>{});
+}
+
+template<typename ScalarType>
+Tensor Tensor::operator+(const ScalarType& scalar) const {
+    return scalar_operation(*this, scalar, std::plus<>{});
+}
+
+template<typename ScalarType>
+Tensor Tensor::operator-(const ScalarType& scalar) const {
+    return scalar_operation(*this, scalar, std::minus<>{});
+}
+
+template<typename ScalarType>
+Tensor Tensor::operator/(const ScalarType& scalar) const {
+    return scalar_operation(*this, scalar, std::divides<>{});
+}
+
+
+} // namespace mytorch

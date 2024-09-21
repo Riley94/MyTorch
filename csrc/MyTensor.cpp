@@ -3,6 +3,8 @@
 #include "MyTensor.h"
 #include "pybind_includes.h"
 
+namespace mytorch {
+
 Tensor::Tensor(const std::vector<int64_t>& shape) : shape(shape) {
     int64_t totalSize = numElements(shape);
     data = std::vector<double>(totalSize, 0.0); // Initialize all elements to zero
@@ -220,32 +222,6 @@ Tensor Tensor::operator+(const Tensor& other) const {
     return elementwise_binary_op(*this, other, std::plus<>(), "addition");
 }
 
-template <typename ScalarType>
-Tensor Tensor::operator+(ScalarType scalar) const {
-    // Determine the resulting dtype based on tensor's dtype and scalar's type
-    Dtype result_dtype = promote_dtype_with_scalar<ScalarType>(dtype);
-    
-    // Create a new tensor with the promoted dtype
-    Tensor result(shape, result_dtype);
-    
-    // Visit the current tensor's data and perform the addition
-    std::visit([&](const auto& dataVec) {
-        using CurrentDataType = typename std::decay_t<decltype(dataVec)>::value_type;
-        using ResultDataType = DtypeToCppType_t<result_dtype>;
-        
-        std::vector<ResultDataType> result_data;
-        result_data.reserve(dataVec.size());
-        
-        for (const auto& val : dataVec) {
-            result_data.emplace_back(static_cast<ResultDataType>(val) + static_cast<ResultDataType>(scalar));
-        }
-        
-        result.set_data(result_data);
-    }, data);
-    
-    return result;
-}
-
 Tensor Tensor::operator-(const Tensor& other) const {
     return elementwise_binary_op(*this, other, std::minus<>(), "subtraction");
 }
@@ -308,25 +284,25 @@ Tensor Tensor::dot(const Tensor& other) const {
             case Dtype::Float32: {
                 std::vector<float> result_data(result_shape[0] * result_shape[1], 0.0f);
                 compute_dot_product<float>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
-                result.set_data(std::move(result_data));
+                result.set_data(result_data);
                 break;
             }
             case Dtype::Float64: {
                 std::vector<double> result_data(result_shape[0] * result_shape[1], 0.0);
                 compute_dot_product<double>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
-                result.set_data(std::move(result_data));
+                result.set_data(result_data);
                 break;
             }
             case Dtype::Int32: {
                 std::vector<int32_t> result_data(result_shape[0] * result_shape[1], 0);
                 compute_dot_product<int32_t>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
-                result.set_data(std::move(result_data));
+                result.set_data(result_data);
                 break;
             }
             case Dtype::Int64: {
                 std::vector<int64_t> result_data(result_shape[0] * result_shape[1], 0);
                 compute_dot_product<int64_t>(shape, other.get_shape(), lhs_data, rhs_data, result_data);
-                result.set_data(std::move(result_data));
+                result.set_data(result_data);
                 break;
             }
             default:
@@ -394,22 +370,30 @@ std::string Tensor::repr() const {
 }
 
 // Implement the transpose method
-/* Tensor Tensor::transpose() const {
+Tensor Tensor::transpose() const {
     if (shape.size() != 2) {
-        throw runtime_error("Transpose is only supported for 2D tensors.");
+        throw std::runtime_error("Transpose is only supported for 2D tensors.");
     }
 
-    vector<int64_t> transposed_shape = {shape[1], shape[0]};
-    Tensor result(transposed_shape);
+    std::vector<int64_t> transposed_shape = {shape[1], shape[0]};
+    Tensor result(transposed_shape, dtype);
 
-    for (int64_t i = 0; i < shape[0]; ++i) {
-        for (int64_t j = 0; j < shape[1]; ++j) {
-            result.data[j * shape[0] + i] = data[i * shape[1] + j];
+    auto transposeLambda = [&](const auto& dataVec) {
+        using DataType = std::decay_t<decltype(dataVec)>;
+        DataType transposed_data(dataVec.size());
+
+        for (int64_t i = 0; i < shape[0]; ++i) {
+            for (int64_t j = 0; j < shape[1]; ++j) {
+                transposed_data[j * shape[0] + i] = dataVec[i * shape[1] + j];
+            }
         }
-    }
+        result.set_data(transposed_data);
+    };
+
+    std::visit(transposeLambda, data);
 
     return result;
-} */
+}
 
 /* void Tensor::add_(const double& other)
 {
@@ -464,3 +448,5 @@ void Tensor::setItem(int64_t index, py::object value) {
         }
     }, data);
 }
+
+} // namespace mytorch

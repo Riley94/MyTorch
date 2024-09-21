@@ -4,6 +4,8 @@
 #include <vector>
 #include "pybind_includes.h"
 
+namespace mytorch {
+    
 class Tensor; // Forward declarations
 enum class Dtype;
 
@@ -21,3 +23,5 @@ Tensor rand_like(const Tensor& other, const Dtype& dtype);
 Tensor rand(const py::tuple& shape, const Dtype& dtype);
 // create a tensor from a numpy array
 Tensor from_numpy(const py::array& np_array);
+
+} // namespace mytorch

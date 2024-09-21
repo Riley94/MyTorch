@@ -5,6 +5,8 @@
 #include <iostream>
 #include "pybind_includes.h"
 
+namespace mytorch {
+
 // Helper template to trigger static_assert
 template <typename>
 inline constexpr bool always_false = false;
@@ -109,3 +111,5 @@ Dtype promote_dtype_with_scalar(const Dtype& tensor_dtype) {
 
     return promote_types(tensor_dtype, scalar_dtype);
 }
+
+} // namespace mytorch

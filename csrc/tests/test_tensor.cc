@@ -2,6 +2,8 @@
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>  // Includes py::scoped_interpreter
 
+using namespace mytorch;
+
 // The fixture for testing class Foo.
 class TensorTest : public testing::Test {
  protected:
@@ -54,7 +56,7 @@ std::vector<double> extractDataAsDouble(const Tensor& tensor) {
     return data;
 }
 
-void checkData(const std::vector<double>& result_data, const std::vector<double>& expected_data, std::string operation) {
+void checkData(const std::vector<double>& result_data, const std::vector<double>& expected_data, const std::string& operation) {
     EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in " << operation << " result";
 
     for (size_t i = 0; i < expected_data.size(); ++i) {
@@ -64,9 +66,13 @@ void checkData(const std::vector<double>& result_data, const std::vector<double>
 
 TEST_F(TensorTest, Addition) {
     Tensor result = tensor1 + tensor2;
+    Tensor resultScalar = tensor1 + 1.0;
     std::vector<double> expected_data = {2.0, 3.0, 4.0, 5.0};
+    std::vector<double> expected_data_scalar = {2.0, 3.0, 4.0, 5.0};
     std::vector<double> result_data = extractDataAsDouble(result);
+    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
     checkData(result_data, expected_data, "addition");
+    checkData(result_data_scalar, expected_data_scalar, "addition with scalar");
 }
 
 TEST_F(TensorTest, Multiplication) {
@@ -82,16 +88,24 @@ TEST_F(TensorTest, Multiplication) {
 
 TEST_F(TensorTest, Subtraction) {
     Tensor result = tensor1 - tensor2;
+    Tensor resultScalar = tensor1 - 1.0;
     std::vector<double> expected_data = {0.0, 1.0, 2.0, 3.0};
+    std::vector<double> expected_data_scalar = {0.0, 1.0, 2.0, 3.0};
     std::vector<double> result_data = extractDataAsDouble(result);
+    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
     checkData(result_data, expected_data, "subtraction");
+    checkData(result_data_scalar, expected_data_scalar, "subtraction with scalar");
 }
 
 TEST_F(TensorTest, Division) {
     Tensor result = tensor1 / tensor2;
+    Tensor resultScalar = tensor1 / 1.0;
     std::vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
+    std::vector<double> expected_data_scalar = {1.0, 2.0, 3.0, 4.0};
     std::vector<double> result_data = extractDataAsDouble(result);
+    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
     checkData(result_data, expected_data, "division");
+    checkData(result_data_scalar, expected_data_scalar, "division with scalar");
 }
 
 // Test Tensor Negation
@@ -111,13 +125,12 @@ TEST_F(TensorTest, DotProduct) {
 }
 
 // Test Tensor Transpose
-/* TEST_F(TensorTest, Transpose) {
+TEST_F(TensorTest, Transpose) {
     Tensor result = tensor1.transpose();
-
-    // Check if result matches expected values
-    vector<double> expected_data = {1.0, 3.0, 2.0, 4.0};
-    EXPECT_EQ(result.get_data(), expected_data) << "Transpose failed";
-} */
+    std::vector<double> result_data = extractDataAsDouble(result);
+    std::vector<double> expected_data = {1.0, 3.0, 2.0, 4.0};
+    checkData(result_data, expected_data, "transpose");
+}
 
 // Test Invalid Shape for Addition
 TEST_F(TensorTest, InvalidShapeAddition) {

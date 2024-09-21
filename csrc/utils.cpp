@@ -2,6 +2,8 @@
 #include "utils.h"
 #include "MyTensor.h"
 
+namespace mytorch {
+
 Tensor ones_like(const Tensor& other, const Dtype& dtype) {
     return Tensor(other.get_shape(), std::vector<double>(other.size(), 1.0), dtype);
 }
@@ -100,3 +102,5 @@ Tensor from_numpy(const py::array& np_array) {
         throw std::invalid_argument("Unsupported data type provided");
     }
 }
+
+} // namespace mytorch

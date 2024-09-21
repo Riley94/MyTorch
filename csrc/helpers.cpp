@@ -1,5 +1,7 @@
 #include "helpers.h"
 
+namespace mytorch {
+
 Dtype promote_types(const Dtype& dtype1, const Dtype& dtype2) {
     if (dtype1 == Dtype::Float64 || dtype2 == Dtype::Float64) {
         return Dtype::Float64;
@@ -34,3 +36,5 @@ int64_t numElements(const std::vector<int64_t>& shape) {
     }
     return totalSize;
 }
+
+} // namespace mytorch
