@@ -62,20 +62,6 @@ void checkDimensions(const std::vector<int64_t>& shape, const std::vector<int64_
 // return the total number of elements in a tensor
 int64_t numElements(const std::vector<int64_t>& shape);
 
-// easy way to print a vector
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& vect_name) {
-    os << "[";
-    for (size_t i = 0; i < vect_name.size(); ++i) {
-        os << vect_name[i];
-        if (i != vect_name.size() - 1) {
-            os << " "; // Space between elements
-        }
-    } 
-    os << "]";
-    return os; // Return the ostream object to allow chaining
-}
-
 // get the dtype from a C++ type
 template<typename T>
 Dtype getDtypeFromCppType() {

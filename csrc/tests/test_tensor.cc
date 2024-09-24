@@ -56,12 +56,45 @@ std::vector<double> extractDataAsDouble(const Tensor& tensor) {
     return data;
 }
 
-void checkData(const std::vector<double>& result_data, const std::vector<double>& expected_data, const std::string& operation) {
-    EXPECT_EQ(result_data.size(), expected_data.size()) << "Size mismatch in " << operation << " result";
+void checkData(const Tensor& result_tensor, 
+               const std::vector<double>& expected_data, 
+               const std::string& operation, 
+               Dtype expected_dtype) {
 
-    for (size_t i = 0; i < expected_data.size(); ++i) {
-        EXPECT_DOUBLE_EQ(result_data[i], expected_data[i]) << "Mismatch at index " << i << " for " << operation;
-    }
+    std::vector<std::string> dtype_names = {"Float32", "Float64", "Int32", "Int64"};
+    // Check if the expected dtype matches the result tensor's dtype
+    EXPECT_EQ(result_tensor.get_dtype(), expected_dtype) << "Dtype mismatch in " << operation 
+                                                         << " result. Expected: " 
+                                                         << dtype_names[static_cast<int>(expected_dtype)]
+                                                         << ", but got: " 
+                                                         << dtype_names[static_cast<int>(result_tensor.get_dtype())];
+
+    // Extract actual data from the tensor using std::visit
+    std::visit([&](const auto& dataVec) {
+        using ActualDataType = typename std::decay_t<decltype(dataVec)>::value_type;
+
+        // Check if the actual data type matches what we expect for the Dtype
+        if constexpr (std::is_same_v<ActualDataType, double>) {
+            EXPECT_EQ(expected_dtype, Dtype::Float64) << "Data type mismatch in " << operation;
+        } else if constexpr (std::is_same_v<ActualDataType, float>) {
+            EXPECT_EQ(expected_dtype, Dtype::Float32) << "Data type mismatch in " << operation;
+        } else if constexpr (std::is_same_v<ActualDataType, int32_t>) {
+            EXPECT_EQ(expected_dtype, Dtype::Int32) << "Data type mismatch in " << operation;
+        } else if constexpr (std::is_same_v<ActualDataType, int64_t>) {
+            EXPECT_EQ(expected_dtype, Dtype::Int64) << "Data type mismatch in " << operation;
+        } else {
+            FAIL() << "Unexpected data type in " << operation;
+        }
+
+        // Check the size of the data
+        EXPECT_EQ(dataVec.size(), expected_data.size()) << "Size mismatch in " << operation << " result";
+
+        // Check the values of the data
+        for (size_t i = 0; i < expected_data.size(); ++i) {
+            EXPECT_DOUBLE_EQ(static_cast<double>(dataVec[i]), expected_data[i]) << "Mismatch at index " << i << " for " << operation;
+        }
+
+    }, result_tensor.get_data());
 }
 
 TEST_F(TensorTest, Addition) {
@@ -69,10 +102,8 @@ TEST_F(TensorTest, Addition) {
     Tensor resultScalar = tensor1 + 1.0;
     std::vector<double> expected_data = {2.0, 3.0, 4.0, 5.0};
     std::vector<double> expected_data_scalar = {2.0, 3.0, 4.0, 5.0};
-    std::vector<double> result_data = extractDataAsDouble(result);
-    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
-    checkData(result_data, expected_data, "addition");
-    checkData(result_data_scalar, expected_data_scalar, "addition with scalar");
+    checkData(result, expected_data, "addition", Dtype::Float64);
+    checkData(resultScalar, expected_data_scalar, "addition with scalar", Dtype::Float64);
 }
 
 TEST_F(TensorTest, Multiplication) {
@@ -80,10 +111,8 @@ TEST_F(TensorTest, Multiplication) {
     Tensor resultScalar = tensor1 * 2.0;
     std::vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
     std::vector<double> expected_data_scalar = {2.0, 4.0, 6.0, 8.0};
-    std::vector<double> result_data = extractDataAsDouble(result);
-    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
-    checkData(result_data, expected_data, "multiplication");
-    checkData(result_data_scalar, expected_data_scalar, "multiplication with scalar");
+    checkData(result, expected_data, "multiplication", Dtype::Float64);
+    checkData(resultScalar, expected_data_scalar, "multiplication with scalar", Dtype::Float64);
 }
 
 TEST_F(TensorTest, Subtraction) {
@@ -91,37 +120,34 @@ TEST_F(TensorTest, Subtraction) {
     Tensor resultScalar = tensor1 - 1.0;
     std::vector<double> expected_data = {0.0, 1.0, 2.0, 3.0};
     std::vector<double> expected_data_scalar = {0.0, 1.0, 2.0, 3.0};
-    std::vector<double> result_data = extractDataAsDouble(result);
-    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
-    checkData(result_data, expected_data, "subtraction");
-    checkData(result_data_scalar, expected_data_scalar, "subtraction with scalar");
+    checkData(result, expected_data, "subtraction", Dtype::Float64);
+    checkData(resultScalar, expected_data_scalar, "subtraction with scalar", Dtype::Float64);
 }
 
 TEST_F(TensorTest, Division) {
     Tensor result = tensor1 / tensor2;
     Tensor resultScalar = tensor1 / 1.0;
+    Tensor resultDecimal = tensor1 / 3.0;
     std::vector<double> expected_data = {1.0, 2.0, 3.0, 4.0};
     std::vector<double> expected_data_scalar = {1.0, 2.0, 3.0, 4.0};
-    std::vector<double> result_data = extractDataAsDouble(result);
-    std::vector<double> result_data_scalar = extractDataAsDouble(resultScalar);
-    checkData(result_data, expected_data, "division");
-    checkData(result_data_scalar, expected_data_scalar, "division with scalar");
+    std::vector<double> expected_data_decimal = {1.0/3.0, 2.0/3.0, 1.0, 4.0/3.0};
+    checkData(result, expected_data, "division", Dtype::Float64);
+    checkData(resultScalar, expected_data_scalar, "division with scalar", Dtype::Float64);
+    checkData(resultDecimal, expected_data_decimal, "division with decimal output", Dtype::Float64);
 }
 
 // Test Tensor Negation
 TEST_F(TensorTest, Negation) {
     Tensor result = -tensor1;
-    std::vector<double> result_data = extractDataAsDouble(result);
     std::vector<double> expected_data = {-1.0, -2.0, -3.0, -4.0};
-    checkData(result_data, expected_data, "negation");
+    checkData(result, expected_data, "negation", Dtype::Float64);
 }
 
 // Test Tensor Dot Product
 TEST_F(TensorTest, DotProduct) {
     Tensor result = tensor1.dot(tensor2);
-    std::vector<double> result_data = extractDataAsDouble(result);
     std::vector<double> expected_data = {3.0, 3.0, 7.0, 7.0};
-    checkData(result_data, expected_data, "dot product");
+    checkData(result, expected_data, "dot product", Dtype::Float64);
 }
 
 // Test Tensor Transpose
@@ -129,7 +155,7 @@ TEST_F(TensorTest, Transpose) {
     Tensor result = tensor1.transpose();
     std::vector<double> result_data = extractDataAsDouble(result);
     std::vector<double> expected_data = {1.0, 3.0, 2.0, 4.0};
-    checkData(result_data, expected_data, "transpose");
+    checkData(result, expected_data, "transpose", Dtype::Float64);
 }
 
 // Test Invalid Shape for Addition
@@ -139,11 +165,19 @@ TEST_F(TensorTest, InvalidShapeAddition) {
     EXPECT_THROW(tensor1 + tensor3, std::runtime_error);
 }
 
+// Test in-place addition
+TEST_F(TensorTest, InPlaceAddition) {
+    Tensor tensor_to_change(std::vector<int64_t>{2, 2}, std::vector<double>{1.0, 1.0, 1.0, 1.0}, Dtype::Float64);
+    tensor_to_change.add_(1.0);
+    std::vector<double> expected_data = {2.0, 2.0, 2.0, 2.0};
+    checkData(tensor_to_change, expected_data, "in-place addition", Dtype::Float64);
+}
+
 // Test Invalid Shape for Dot Product
-/* TEST_F(TensorTest, InvalidShapeDotProduct) {
+TEST_F(TensorTest, InvalidShapeDotProduct) {
     // This should throw an assertion failure due to incompatible shapes for dot product
-    EXPECT_THROW(tensor1.dot(tensor3), runtime_error);
-} */
+    EXPECT_THROW(tensor1.dot(tensor3), std::runtime_error);
+}
 
 // Test Empty Tensor Initialization
 /* TEST_F(TensorTest, TensorInit) {

@@ -52,10 +52,12 @@ PYBIND11_MODULE(MyTorchCPP, m) {
         .def("__repr__", &Tensor::repr)
         // Overload for single argument indexing (e.g., tensor[0])
         .def("__getitem__", &Tensor::getItem)
-        .def("__setitem__", &Tensor::setItem);
+        .def("__setitem__", &Tensor::setItem)
         // Overload for two argument indexing (e.g., tensor[0, 1] or tensor[:, 0])
         //.def("__getitem__", &Tensor::slice)
-        //.def("add_", &Tensor::add_) // In-place scalar addition
+        .def("add_", &Tensor::add_<int>, py::arg("scalar")) // have to explicitly specify the types for template functions
+        .def("add_", &Tensor::add_<float>, py::arg("scalar"))
+        .def("add_", &Tensor::add_<double>, py::arg("scalar"));
 
     py::enum_<Dtype>(m, "Dtype")
         .value("Float32", Dtype::Float32)
@@ -65,7 +67,7 @@ PYBIND11_MODULE(MyTorchCPP, m) {
         .export_values();
 
     m.def("rand_like", &rand_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
-    m.def("rand", py::overload_cast<const py::tuple&, const Dtype&>(&rand), py::arg("shape"), py::arg("dtype") = Dtype::Float64);
+    m.def("rand", py::overload_cast<const py::tuple&, const Dtype&>(&rand), py::arg("shape"), py::arg("dtype") = Dtype::Float64); // use for overloaded functions
     m.def("ones_like", &ones_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
     m.def("ones", &ones, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros_like", &zeros_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);

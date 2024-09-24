@@ -1,4 +1,5 @@
 #include <typeinfo>
+#include <iomanip>
 
 #include "MyTensor.h"
 #include "pybind_includes.h"
@@ -174,12 +175,17 @@ Proxy Tensor::operator[](int64_t index) {
 }
 
 template<typename T, typename Op>
-void apply_elementwise_operation(Tensor& result, const auto& lhs_data, const auto& rhs_data, Op op) {
+void apply_elementwise_operation(Tensor& result, const auto& lhs_data, const auto& rhs_data, Op op, bool is_division = false) {
     size_t dataSize = lhs_data.size();
     std::vector<T> result_data(dataSize);
 
     for (size_t i = 0; i < dataSize; ++i) {
-        result_data[i] = op(static_cast<T>(lhs_data[i]), static_cast<T>(rhs_data[i]));
+        // Special handling for division to prevent integer division
+        if (is_division) {
+            result_data[i] = op(static_cast<double>(lhs_data[i]), static_cast<double>(rhs_data[i]));
+        } else {
+            result_data[i] = op(static_cast<T>(lhs_data[i]), static_cast<T>(rhs_data[i]));
+        }
     }
 
     result.set_data(result_data);
@@ -191,22 +197,36 @@ Tensor elementwise_binary_op(const Tensor& lhs, const Tensor& rhs, Op op, const 
         throw std::runtime_error("Shape mismatch for " + op_name);
     }
 
-    Dtype result_dtype = promote_types(lhs.get_dtype(), rhs.get_dtype());
+    Dtype result_dtype;
+    bool is_division = (op_name == "division");
+
+
+    // Always promote to Float32 for division, unless Float64 is needed
+    if (is_division) {
+        if (lhs.get_dtype() == Dtype::Float64 || rhs.get_dtype() == Dtype::Float64) {
+            result_dtype = Dtype::Float64;
+        } else {
+            result_dtype = Dtype::Float32;
+        }
+    } else {
+        result_dtype = promote_types(lhs.get_dtype(), rhs.get_dtype());
+    }
+
     Tensor result(lhs.get_shape(), result_dtype);
 
     auto operationLambda = [&](const auto& lhs_data, const auto& rhs_data) {
         switch (result_dtype) {
             case Dtype::Float64:
-                apply_elementwise_operation<double>(result, lhs_data, rhs_data, op);
+                apply_elementwise_operation<double>(result, lhs_data, rhs_data, op, is_division);
                 break;
             case Dtype::Float32:
-                apply_elementwise_operation<float>(result, lhs_data, rhs_data, op);
+                apply_elementwise_operation<float>(result, lhs_data, rhs_data, op, is_division);
                 break;
             case Dtype::Int64:
-                apply_elementwise_operation<int64_t>(result, lhs_data, rhs_data, op);
+                apply_elementwise_operation<int64_t>(result, lhs_data, rhs_data, op, is_division);
                 break;
             case Dtype::Int32:
-                apply_elementwise_operation<int32_t>(result, lhs_data, rhs_data, op);
+                apply_elementwise_operation<int32_t>(result, lhs_data, rhs_data, op, is_division);
                 break;
             default:
                 throw std::runtime_error("Unsupported data type for " + op_name);
@@ -320,7 +340,7 @@ void Tensor::printRecursive(std::ostream& os, const std::vector<int64_t>& indice
         // Reached the full depth of indices, print the value
         int64_t flatIndex = getFlatIndex(indices);
         std::visit([&os, flatIndex](const auto& dataVec) {
-            os << dataVec[flatIndex];
+            os << std::fixed << std::setprecision(1) << dataVec[flatIndex];
         }, data);
     } else {
         os << "[";
@@ -328,13 +348,16 @@ void Tensor::printRecursive(std::ostream& os, const std::vector<int64_t>& indice
             std::vector<int64_t> new_indices = indices;
             new_indices.push_back(i);
             printRecursive(os, new_indices, dim + 1);
+
             if (i < shape[dim] - 1) {
-                os << ", ";
+                os << ", ";  // Comma between elements in the same dimension
             }
         }
         os << "]";
-        if (dim == 0) {
-            os << "\n";
+        
+        // Ensure that the newline comes after the comma, not before
+        if (dim == 1 && indices.size() < shape[0] - 1) {
+            os << ",\n        ";  // Add a newline and indentation after each row
         }
     }
 }
@@ -342,30 +365,12 @@ void Tensor::printRecursive(std::ostream& os, const std::vector<int64_t>& indice
 // Prints the tensor in a structured format
 std::string Tensor::repr() const {
     std::ostringstream oss;
-    oss << "Tensor(shape=[" << shape;
-    oss << "], dtype=";
-
-    switch (dtype)
-    {
-    case Dtype::Float32:
-        oss << "float32";
-        break;
-    case Dtype::Float64:
-        oss << "float64";
-        break;
-    case Dtype::Int32:
-        oss << "Int32";
-        break;
-    case Dtype::Int64:
-        oss << "Int64";
-        break;
-    default:
-        oss << "Unknown";
-        break;
-    }
-    oss << ")\n";
+    oss << "tensor(";
+    
     // Print the tensor data
-    printRecursive(oss, {}, 0);  // Use a recursive method to print multi-dimensional arrays
+    printRecursive(oss, {}, 0);  // Use recursive method to print multi-dimensional arrays
+    
+    oss << ")";
     return oss.str();
 }
 
@@ -394,13 +399,6 @@ Tensor Tensor::transpose() const {
 
     return result;
 }
-
-/* void Tensor::add_(const double& other)
-{
-    for (int64_t i = 0; i < size(); ++i) {
-        data[i] += other;
-    }
-} */
 
 /* py::array_t<double> Tensor::numpy() const {
     py::array_t<double> np_array(shape);

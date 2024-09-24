@@ -86,7 +86,8 @@ public:
     // Tensor dot product
     Tensor dot(const Tensor& other) const;
 
-    //void add_(const double& other);
+    template<typename ScalarType>
+    void add_(const ScalarType& scalar);
 
     //Tensor outer_product(const Tensor& other) const;
 
@@ -215,5 +216,24 @@ Tensor Tensor::operator/(const ScalarType& scalar) const {
     return scalar_operation(*this, scalar, std::divides<>{});
 }
 
+template<typename ScalarType>
+void Tensor::add_(const ScalarType& scalar) {
+    // Determine the resulting dtype based on tensor's dtype and scalar's type
+    this->dtype = promote_dtype_with_scalar<ScalarType>(this->dtype);
+    
+    std::visit([&scalar](auto& dataVec) {
+        using ValueType = typename std::decay_t<decltype(dataVec)>::value_type;
+
+        // Check if ScalarType can be converted to ValueType
+        static_assert(std::is_arithmetic_v<ScalarType>, "Scalar must be an arithmetic type");
+        if constexpr (!std::is_convertible_v<ScalarType, ValueType>) {
+            throw std::runtime_error("Incompatible types for operation");
+        }
+
+        for (auto& val : dataVec) {
+            val += static_cast<ValueType>(scalar);
+        }
+    }, this->data);
+}
 
 } // namespace mytorch
