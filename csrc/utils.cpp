@@ -1,6 +1,7 @@
 #include "helpers.h"
 #include "utils.h"
 #include "MyTensor.h"
+#include "pybind_includes.h"
 
 namespace mytorch {
 
@@ -75,10 +76,12 @@ Tensor rand(const py::tuple& shape, const Dtype& dtype) {
     return rand_like(Tensor(temp), dtype);
 }
 
-// given a numpy array and a dtype, create a tensor
 template <typename T>
-Tensor tensor_from_numpy(const py::array& np_array, Dtype dtype) {
+Tensor from_numpy(const py::array_t<T>& np_array) {
     auto buffer_info = np_array.request();
+
+    Dtype dtype = getDtypeFromCppType<T>();
+
     std::vector<int64_t> tensor_shape(buffer_info.shape.begin(), buffer_info.shape.end());
     size_t num_elements = buffer_info.size;
     
@@ -87,20 +90,10 @@ Tensor tensor_from_numpy(const py::array& np_array, Dtype dtype) {
     return Tensor(tensor_shape, tensor_data, dtype);
 }
 
-Tensor from_numpy(const py::array& np_array) {
-    auto buffer_info = np_array.request();
-
-    if (py::format_descriptor<double>::format() == buffer_info.format) {
-        return tensor_from_numpy<double>(np_array, Dtype::Float64);
-    } else if (py::format_descriptor<int64_t>::format() == buffer_info.format) {
-        return tensor_from_numpy<int64_t>(np_array, Dtype::Int64);
-    } else if (py::format_descriptor<int32_t>::format() == buffer_info.format) {
-        return tensor_from_numpy<int32_t>(np_array, Dtype::Int32);
-    } else if (py::format_descriptor<float>::format() == buffer_info.format) {
-        return tensor_from_numpy<float>(np_array, Dtype::Float32);
-    } else {
-        throw std::invalid_argument("Unsupported data type provided");
-    }
-}
+// Explicit template instantiation
+template Tensor from_numpy<double>(const py::array_t<double>& np_array);
+template Tensor from_numpy<float>(const py::array_t<float>& np_array);
+template Tensor from_numpy<int64_t>(const py::array_t<int64_t>& np_array);
+template Tensor from_numpy<int32_t>(const py::array_t<int32_t>& np_array);
 
 } // namespace mytorch

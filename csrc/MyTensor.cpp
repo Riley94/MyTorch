@@ -1,5 +1,6 @@
 #include <typeinfo>
 #include <iomanip>
+#include <functional>
 
 #include "MyTensor.h"
 #include "pybind_includes.h"
@@ -48,7 +49,7 @@ void Tensor::parseList(const py::list& list) {
         if (depth >= inferred_shape.size()) {
             inferred_shape.push_back(lst.size());
         } else {
-            if (inferred_shape[depth] != lst.size()) {
+            if (static_cast<long unsigned int>(inferred_shape[depth]) != lst.size()) {
                 throw std::invalid_argument("Inconsistent dimensions in list for Tensor initialization.");
             }
         }
@@ -297,9 +298,6 @@ Tensor Tensor::dot(const Tensor& other) const {
 
     // Use std::visit to handle the variant data for both tensors
     auto dotProductLambda = [&](const auto& lhs_data, const auto& rhs_data) {
-        using LhsType = std::decay_t<decltype(lhs_data)>;
-        using RhsType = std::decay_t<decltype(rhs_data)>;
-        
         switch (result_dtype) {
             case Dtype::Float32: {
                 std::vector<float> result_data(result_shape[0] * result_shape[1], 0.0f);
@@ -356,7 +354,7 @@ void Tensor::printRecursive(std::ostream& os, const std::vector<int64_t>& indice
         os << "]";
         
         // Ensure that the newline comes after the comma, not before
-        if (dim == 1 && indices.size() < shape[0] - 1) {
+        if (dim == 1 && indices.size() < static_cast<size_t>(shape[0] - 1)) {
             os << ",\n        ";  // Add a newline and indentation after each row
         }
     }
