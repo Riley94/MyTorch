@@ -179,6 +179,28 @@ TEST_F(TensorTest, InvalidShapeDotProduct) {
     EXPECT_THROW(tensor1.dot(tensor3), std::runtime_error);
 }
 
+// Test numpy conversion
+TEST_F(TensorTest, NumpyConversion) {
+    py::scoped_interpreter guard{}; // Initialize Python interpreter
+
+    // Convert tensor1 to a numpy array
+    auto npArray = tensor1.numpy();
+    std::vector<double> tensor_data = extractDataAsDouble(tensor1);
+
+    // Check if the numpy array has the same shape and data as tensor1
+    py::buffer_info buffer = npArray.request();
+    EXPECT_EQ(buffer.ndim, 2) << "Numpy array should have 2 dimensions";
+    EXPECT_EQ(buffer.shape[0], 2) << "Numpy array should have 2 rows";
+    EXPECT_EQ(buffer.shape[1], 2) << "Numpy array should have 2 columns";
+    EXPECT_EQ(buffer.format, py::format_descriptor<double>::format()) << "Numpy array should have double data type";
+
+    // Check if the data in the numpy array matches the data in tensor1
+    double* data = static_cast<double*>(buffer.ptr);
+    for (size_t i = 0; i < buffer.size; ++i) {
+        EXPECT_DOUBLE_EQ(data[i], tensor_data[i]) << "Mismatch in numpy array data at index " << i;
+    }
+}
+
 // Test Empty Tensor Initialization
 /* TEST_F(TensorTest, TensorInit) {
     py::scoped_interpreter guard{}; // Initialize Python interpreter

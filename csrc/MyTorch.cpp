@@ -48,7 +48,7 @@ PYBIND11_MODULE(MyTorchCPP, m) {
         BIND_OPERATOR(/, "__truediv__", float)
         BIND_OPERATOR(/, "__truediv__", double)
         .def("__neg__", static_cast<Tensor (Tensor::*)() const>(&Tensor::operator-))
-        //.def("numpy", &Tensor::numpy)
+        .def("numpy", &Tensor::numpy)
         .def("__repr__", &Tensor::repr)
         // Overload for single argument indexing (e.g., tensor[0])
         .def("__getitem__", &Tensor::getItem)
@@ -72,10 +72,7 @@ PYBIND11_MODULE(MyTorchCPP, m) {
     m.def("ones", &ones, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros_like", &zeros_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros", &zeros, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
-    m.def("from_numpy", &from_numpy<double>, py::arg("np_array"));
-    m.def("from_numpy", &from_numpy<float>, py::arg("np_array"));
-    m.def("from_numpy", &from_numpy<int64_t>, py::arg("np_array"));
-    m.def("from_numpy", &from_numpy<int32_t>, py::arg("np_array"));
+    m.def("from_numpy", &from_numpy, py::arg("np_array"));
 }
 
 #undef BIND_OPERATOR

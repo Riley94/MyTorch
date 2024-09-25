@@ -22,7 +22,6 @@ Tensor rand_like(const Tensor& other, const Dtype& dtype);
 // return a tensor of random values with the given shape and dtype
 Tensor rand(const py::tuple& shape, const Dtype& dtype);
 // create a tensor from a numpy array
-template <typename T>
-Tensor from_numpy(const py::array_t<T>& np_array);
+Tensor from_numpy(const py::array& np_array);
 
 } // namespace mytorch

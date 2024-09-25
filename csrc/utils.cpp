@@ -77,23 +77,34 @@ Tensor rand(const py::tuple& shape, const Dtype& dtype) {
 }
 
 template <typename T>
-Tensor from_numpy(const py::array_t<T>& np_array) {
+Tensor tensor_from_numpy(const py::array_t<T>& np_array, Dtype dtype) {
     auto buffer_info = np_array.request();
+    std::vector<int64_t> shape;
+    shape.reserve(buffer_info.ndim);
+    for (int i = 0; i < buffer_info.ndim; ++i) {
+        shape.push_back(buffer_info.shape[i]);
+    }
 
-    Dtype dtype = getDtypeFromCppType<T>();
+    std::vector<T> tensor_data(reinterpret_cast<T*>(buffer_info.ptr),
+                               reinterpret_cast<T*>(buffer_info.ptr) + buffer_info.size);
 
-    std::vector<int64_t> tensor_shape(buffer_info.shape.begin(), buffer_info.shape.end());
-    size_t num_elements = buffer_info.size;
-    
-    std::vector<T> tensor_data(reinterpret_cast<T*>(buffer_info.ptr), // Use reinterpret_cast when casting from void* to another pointer type
-                               reinterpret_cast<T*>(buffer_info.ptr) + num_elements);
-    return Tensor(tensor_shape, tensor_data, dtype);
+    return Tensor(shape, tensor_data, dtype);
 }
 
-// Explicit template instantiation
-template Tensor from_numpy<double>(const py::array_t<double>& np_array);
-template Tensor from_numpy<float>(const py::array_t<float>& np_array);
-template Tensor from_numpy<int64_t>(const py::array_t<int64_t>& np_array);
-template Tensor from_numpy<int32_t>(const py::array_t<int32_t>& np_array);
+Tensor from_numpy(const py::array& np_array) {
+    auto buffer_info = np_array.request();
+
+    if (py::format_descriptor<double>::format() == buffer_info.format) {
+        return tensor_from_numpy<double>(np_array, Dtype::Float64);
+    } else if (py::format_descriptor<int64_t>::format() == buffer_info.format) {
+        return tensor_from_numpy<int64_t>(np_array, Dtype::Int64);
+    } else if (py::format_descriptor<int32_t>::format() == buffer_info.format) {
+        return tensor_from_numpy<int32_t>(np_array, Dtype::Int32);
+    } else if (py::format_descriptor<float>::format() == buffer_info.format) {
+        return tensor_from_numpy<float>(np_array, Dtype::Float32);
+    } else {
+        throw std::invalid_argument("Unsupported data type provided. Got: " + std::string(buffer_info.format));
+    }
+}
 
 } // namespace mytorch

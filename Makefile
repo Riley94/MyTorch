@@ -7,6 +7,7 @@ all:
 clean:
 	python setup.py clean --all
 	rm -rf build/ dist/ *.egg-info
+	rm -f MyTorchCPP*
 
 # Target for running tests
 test:

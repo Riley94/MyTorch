@@ -398,15 +398,40 @@ Tensor Tensor::transpose() const {
     return result;
 }
 
-/* py::array_t<double> Tensor::numpy() const {
-    py::array_t<double> np_array(shape);
-    auto buffer = np_array.request();
-    double* ptr = static_cast<double*>(buffer.ptr);
-    for (int64_t i = 0; i < size(); ++i) {
-        ptr[i] = data[i];
+template <typename T>
+py::array_t<T> Tensor::numpy_impl() const {
+    std::vector<py::ssize_t> numpy_shape(shape.begin(), shape.end());
+
+    return std::visit([&](const auto& dataVec) -> py::array_t<T> {
+        using DataType = typename std::decay_t<decltype(dataVec)>::value_type;
+
+        if constexpr (std::is_same_v<DataType, T>) {
+            return py::array_t<T>(
+                numpy_shape,
+                {},                 // Let NumPy compute the strides
+                dataVec.data(),     // Pointer to the data
+                py::cast(this)      // Keep the Tensor alive
+            );
+        } else {
+            throw std::runtime_error("Data type mismatch in numpy_impl()");
+        }
+    }, data);
+}
+
+py::array Tensor::numpy() const {
+    switch (this->dtype) {
+        case Dtype::Float32:
+            return numpy_impl<float>();
+        case Dtype::Float64:
+            return numpy_impl<double>();
+        case Dtype::Int32:
+            return numpy_impl<int32_t>();
+        case Dtype::Int64:
+            return numpy_impl<int64_t>();
+        default:
+            throw std::runtime_error("Unsupported dtype in numpy()");
     }
-    return np_array;
-} */
+}
 
 int64_t Tensor::size() const {
     return visit([](const auto& dataVec) -> int64_t {

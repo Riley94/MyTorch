@@ -96,7 +96,8 @@ public:
     //Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
 
     Tensor transpose() const;
-    //py::array_t<double> numpy() const;
+
+    py::array numpy() const;
 
     /* ---------------------- Display ---------------------- */
 
@@ -136,6 +137,8 @@ private:
     void parseList(const py::list& list);
     // Computes the total number of elements in the tensor based on its shape
     int64_t getFlatIndex(const std::vector<int64_t>& indices) const;
+    template <typename T>
+    py::array_t<T> numpy_impl() const;
     
 };
 
