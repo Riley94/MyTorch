@@ -29,6 +29,8 @@ private:
 public:
 
     /* ------------------- Constructors ------------------- */
+    // Default constructor
+    Tensor() : shape({}), dtype(Dtype::Float64) {}
     
     // Constructor to initialize the tensor with a given shape and fill it with zeros
     Tensor(const std::vector<int64_t>& shape);

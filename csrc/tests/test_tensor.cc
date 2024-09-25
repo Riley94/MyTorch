@@ -1,46 +1,46 @@
 #include "MyTensor.h"
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>  // Includes py::scoped_interpreter
+#include "pybind_includes.h"
 
 using namespace mytorch;
 
 // The fixture for testing class Foo.
 class TensorTest : public testing::Test {
- protected:
-  // You can remove any or all of the following functions if their bodies would
-  // be empty.
+protected:
+    py::scoped_interpreter guard{}; // Initialize Python interpreter
+  
+    // Declare tensor1 and tensor2 as member variables.
+    Tensor tensor1;
+    Tensor tensor2;
+    Tensor tensor3;
 
-  // Declare tensor1 and tensor2 as member variables.
-  Tensor tensor1;
-  Tensor tensor2;
-  Tensor tensor3;
+    // Constructor for setting up the test fixture.
+    TensorTest() {
+    }
 
-  // Constructor for setting up the test fixture.
-  TensorTest() : tensor1(std::vector<int64_t>{2, 2}, std::vector<double>{1.0, 2.0, 3.0, 4.0}, Dtype::Float64),
-                 tensor2(std::vector<int64_t>{2, 2}, std::vector<double>{1.0, 1.0, 1.0, 1.0}, Dtype::Float64),
-                 tensor3(std::vector<int64_t>{3, 3}, std::vector<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, Dtype::Float64) {
-    // You can do additional set-up work for each test here.
-  }
+    ~TensorTest() override {
+        // You can do clean-up work that doesn't throw exceptions here.
+    }
 
-  ~TensorTest() override {
-     // You can do clean-up work that doesn't throw exceptions here.
-  }
+    // If the constructor and destructor are not enough for setting up
+    // and cleaning up each test, you can define the following methods:
 
-  // If the constructor and destructor are not enough for setting up
-  // and cleaning up each test, you can define the following methods:
+    void SetUp() override {
+        // Code here will be called immediately after the constructor (right
+        // before each test).
+        tensor1 = Tensor(std::vector<int64_t>{2, 2}, std::vector<double>{1.0, 2.0, 3.0, 4.0}, Dtype::Float64);
+        tensor2 = Tensor(std::vector<int64_t>{2, 2}, std::vector<double>{1.0, 1.0, 1.0, 1.0}, Dtype::Float64);
+        tensor3 = Tensor(std::vector<int64_t>{3, 3}, std::vector<double>{1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0}, Dtype::Float64);
+    }
 
-  void SetUp() override {
-     // Code here will be called immediately after the constructor (right
-     // before each test).
-  }
+    void TearDown() override {
+        // Code here will be called immediately after each test (right
+        // before the destructor).
+    }
 
-  void TearDown() override {
-     // Code here will be called immediately after each test (right
-     // before the destructor).
-  }
-
-  // Class members declared here can be used by all tests in the test suite
-  // for Foo.
+    // Class members declared here can be used by all tests in the test suite
+    // for Foo.
 };
 
 std::vector<double> extractDataAsDouble(const Tensor& tensor) {
@@ -181,8 +181,6 @@ TEST_F(TensorTest, InvalidShapeDotProduct) {
 
 // Test numpy conversion
 TEST_F(TensorTest, NumpyConversion) {
-    py::scoped_interpreter guard{}; // Initialize Python interpreter
-
     // Convert tensor1 to a numpy array
     auto npArray = tensor1.numpy();
     std::vector<double> tensor_data = extractDataAsDouble(tensor1);

@@ -94,16 +94,28 @@ Tensor tensor_from_numpy(const py::array_t<T>& np_array, Dtype dtype) {
 Tensor from_numpy(const py::array& np_array) {
     auto buffer_info = np_array.request();
 
-    if (py::format_descriptor<double>::format() == buffer_info.format) {
-        return tensor_from_numpy<double>(np_array, Dtype::Float64);
-    } else if (py::format_descriptor<int64_t>::format() == buffer_info.format) {
-        return tensor_from_numpy<int64_t>(np_array, Dtype::Int64);
-    } else if (py::format_descriptor<int32_t>::format() == buffer_info.format) {
-        return tensor_from_numpy<int32_t>(np_array, Dtype::Int32);
-    } else if (py::format_descriptor<float>::format() == buffer_info.format) {
-        return tensor_from_numpy<float>(np_array, Dtype::Float32);
+    if (buffer_info.format == py::format_descriptor<double>::format()) {
+        return tensor_from_numpy<double>(np_array.cast<py::array_t<double>>(), Dtype::Float64);
+    } else if (buffer_info.format == py::format_descriptor<int64_t>::format()) {
+        return tensor_from_numpy<int64_t>(np_array.cast<py::array_t<int64_t>>(), Dtype::Int64);
+    } else if (buffer_info.format == py::format_descriptor<int32_t>::format()) {
+        return tensor_from_numpy<int32_t>(np_array.cast<py::array_t<int32_t>>(), Dtype::Int32);
+    } else if (buffer_info.format == py::format_descriptor<float>::format()) {
+        return tensor_from_numpy<float>(np_array.cast<py::array_t<float>>(), Dtype::Float32);
+    } else if (buffer_info.format == "l") { // explicitly check for 'l' format, present on some linux systems.
+        if (sizeof(long) == 8) {
+            return tensor_from_numpy<int64_t>(np_array.cast<py::array_t<int64_t>>(), Dtype::Int64);
+        } else if (sizeof(long) == 4) {
+            return tensor_from_numpy<int32_t>(np_array.cast<py::array_t<int32_t>>(), Dtype::Int32);
+        } else {
+            throw std::runtime_error("Unsupported size for 'long' type");
+        }
     } else {
-        throw std::invalid_argument("Unsupported data type provided. Got: " + std::string(buffer_info.format));
+        throw std::invalid_argument("Unsupported data type provided. Got: " + std::string(buffer_info.format)
+                                    + ". Expected: " + std::string(py::format_descriptor<double>::format()) 
+                                    + ", " + std::string(py::format_descriptor<int64_t>::format()) 
+                                    + ", " + std::string(py::format_descriptor<int32_t>::format()) + ", " 
+                                    + std::string(py::format_descriptor<float>::format()) + ", or 'l'");
     }
 }
 
