@@ -190,9 +190,11 @@ Tensor scalar_operation(const Tensor& tensor, const ScalarType& scalar, Operatio
             throw std::runtime_error("Incompatible types for operation");
         }
 
-        std::vector<ValueType> result_data(dataVec.size());
+        using ResultType = PromoteType_t<ValueType, ScalarType>;
+
+        std::vector<ResultType> result_data(dataVec.size());
         for (size_t i = 0; i < dataVec.size(); ++i) {
-            result_data[i] = op(dataVec[i], static_cast<ValueType>(scalar));
+            result_data[i] = op(dataVec[i], static_cast<ResultType>(scalar));
         }
 
         result.set_data(result_data);
@@ -203,22 +205,22 @@ Tensor scalar_operation(const Tensor& tensor, const ScalarType& scalar, Operatio
 
 template<typename ScalarType>
 Tensor Tensor::operator*(const ScalarType& scalar) const {
-    return scalar_operation(*this, scalar, std::multiplies<>{});
+    return scalar_operation<ScalarType>(*this, scalar, std::multiplies<>{});
 }
 
 template<typename ScalarType>
 Tensor Tensor::operator+(const ScalarType& scalar) const {
-    return scalar_operation(*this, scalar, std::plus<>{});
+    return scalar_operation<ScalarType>(*this, scalar, std::plus<>{});
 }
 
 template<typename ScalarType>
 Tensor Tensor::operator-(const ScalarType& scalar) const {
-    return scalar_operation(*this, scalar, std::minus<>{});
+    return scalar_operation<ScalarType>(*this, scalar, std::minus<>{});
 }
 
 template<typename ScalarType>
 Tensor Tensor::operator/(const ScalarType& scalar) const {
-    return scalar_operation(*this, scalar, std::divides<>{});
+    return scalar_operation<ScalarType>(*this, scalar, std::divides<>{});
 }
 
 template<typename ScalarType>
