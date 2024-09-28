@@ -73,6 +73,7 @@ PYBIND11_MODULE(MyTorchCPP, m) {
     m.def("zeros_like", &zeros_like, py::arg("other"), py::arg("dtype") = Dtype::Float64);
     m.def("zeros", &zeros, py::arg("shape"), py::arg("dtype") = Dtype::Float64);
     m.def("from_numpy", &from_numpy, py::arg("np_array"));
+    m.def("get_devices", &get_devices);
 }
 
 #undef BIND_OPERATOR

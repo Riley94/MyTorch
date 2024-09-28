@@ -1,4 +1,5 @@
 #pragma once
+#define CL_TARGET_OPENCL_VERSION 300
 
 #include <iostream>
 #include <sstream>
@@ -105,8 +106,6 @@ public:
 
     // Print tensor elements
     std::string repr() const;
-
-    
 
     /* ---------------------- Getters ---------------------- */
 

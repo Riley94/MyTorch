@@ -1,3 +1,5 @@
+#include <CL/cl.h>
+
 #include "helpers.h"
 #include "utils.h"
 #include "MyTensor.h"
@@ -152,6 +154,38 @@ Tensor from_numpy(const py::array& np_array) {
                                     + ", " + std::string(py::format_descriptor<int32_t>::format()) + ", " 
                                     + std::string(py::format_descriptor<float>::format()) + ", or 'l'");
     }
+}
+
+void get_devices() {
+    cl_uint platformCount;
+    clGetPlatformIDs(0, nullptr, &platformCount);
+
+    std::vector<cl_platform_id> platforms(platformCount);
+    clGetPlatformIDs(platformCount, platforms.data(), nullptr);
+
+    py::print("Found", platformCount, "OpenCL platform(s).\n");
+
+    for (cl_uint i = 0; i < platformCount; ++i) {
+        char platformName[128];
+        clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, sizeof(platformName), platformName, nullptr);
+        py::print("Platform", i + 1, ":", platformName);
+
+        cl_uint deviceCount;
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, nullptr, &deviceCount);
+
+        std::vector<cl_device_id> devices(deviceCount);
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, deviceCount, devices.data(), nullptr);
+
+        py::print("  Found", deviceCount, "device(s).");
+
+        for (cl_uint j = 0; j < deviceCount; ++j) {
+            char deviceName[128];
+            clGetDeviceInfo(devices[j], CL_DEVICE_NAME, sizeof(deviceName), deviceName, nullptr);
+            py::print("  Device", j + 1, ":", deviceName);
+        }
+        py::print();  // Print an empty line for spacing
+    }
+    return;
 }
 
 } // namespace mytorch

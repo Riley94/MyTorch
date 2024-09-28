@@ -23,5 +23,6 @@ Tensor rand_like(const Tensor& other, const Dtype& dtype = Dtype::Float64);
 Tensor rand(const py::tuple& shape, const Dtype& dtype = Dtype::Float64);
 // create a tensor from a numpy array
 Tensor from_numpy(const py::array& np_array);
+void get_devices();
 
 } // namespace mytorch
