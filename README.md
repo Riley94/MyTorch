@@ -74,7 +74,20 @@ For testing you will need:
     pip install --upgrade numpy pybind11 torch graphviz build
     ```
 
-5. **Build the Project**:
+    Install OpenCL SDK (new):
+
+    On Linux:
+    ```bash
+    sudo apt install opencl-headers ocl-icd-opencl-dev -y
+    ```
+
+    On Windows:
+    1. Get the latest release from https://github.com/KhronosGroup/OpenCL-SDK
+    2. Extract contents to C:\OpenCL-SDK
+    3. May need to add path to system environment variables
+    
+
+6. **Build the Project**:
 
     Use the provided Makefile to build the project:
 
@@ -84,13 +97,13 @@ For testing you will need:
 
     This will generate the shared library file and whl for installing via pip.
 
-6. **Use the Test Suite**
+7. **Use the Test Suite**
 
    ```bash
    make test
    ```
 
-7. **Install via pip locally (for now)**
+8. **Install via pip locally (for now)**
 
    ```bash
    pip install dist/*.whl --force-reinstall
@@ -98,7 +111,7 @@ For testing you will need:
 
    This is also in the first line of the example notebook (network.ipynb) for easy reinstall of new builds
 
-8. **Clean Build**
+9. **Clean Build**
 
    ```bash
    make clean
