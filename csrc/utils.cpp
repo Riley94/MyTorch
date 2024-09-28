@@ -6,7 +6,24 @@
 namespace mytorch {
 
 Tensor ones_like(const Tensor& other, const Dtype& dtype) {
-    return Tensor(other.get_shape(), std::vector<double>(other.size(), 1.0), dtype);
+    switch (dtype)
+    {
+    case Dtype::Float32:
+        return Tensor(other.get_shape(), std::vector<float>(other.size(), 1.0), dtype);
+        break;
+    case Dtype::Float64:
+        return Tensor(other.get_shape(), std::vector<double>(other.size(), 1.0), dtype);
+        break;
+    case Dtype::Int32:
+        return Tensor(other.get_shape(), std::vector<int32_t>(other.size(), 1), dtype);
+        break;
+    case Dtype::Int64:
+        return Tensor(other.get_shape(), std::vector<int64_t>(other.size(), 1), dtype);
+        break;
+    default:
+        throw std::invalid_argument("Unsupported dtype provided");
+        break;
+    }
 }
 
 Tensor ones(const py::tuple& shape, const Dtype& dtype) {
@@ -20,7 +37,24 @@ Tensor ones(const py::tuple& shape, const Dtype& dtype) {
 }
 
 Tensor zeros_like(const Tensor& other, const Dtype& dtype) {
-    return Tensor(other.get_shape(), std::vector<double>(other.size(), 0.0), dtype);
+    switch (dtype)
+    {
+    case Dtype::Float32:
+        return Tensor(other.get_shape(), std::vector<float>(other.size(), 0.0), dtype);
+        break;
+    case Dtype::Float64:
+        return Tensor(other.get_shape(), std::vector<double>(other.size(), 0.0), dtype);
+        break;
+    case Dtype::Int32:
+        return Tensor(other.get_shape(), std::vector<int32_t>(other.size(), 0), dtype);
+        break;
+    case Dtype::Int64:
+        return Tensor(other.get_shape(), std::vector<int64_t>(other.size(), 0), dtype);
+        break;
+    default:
+        throw std::invalid_argument("Unsupported dtype provided");
+        break;
+    }
 }
 
 Tensor zeros(const py::tuple& shape, const Dtype& dtype) {
@@ -33,37 +67,38 @@ Tensor zeros(const py::tuple& shape, const Dtype& dtype) {
     return zeros_like(Tensor(temp), dtype);
 }
 
-Tensor rand_like(const Tensor& other, const Dtype& dtype) {
-    std::vector<double> random_data(other.size()); // Default to double, may change based on dtype
+template <typename T>
+Tensor generate_random_data(const Tensor& other, const Dtype& dtype, std::mt19937& gen) {
+    std::vector<T> random_data(other.size());
+    std::uniform_real_distribution<double> dis(0.0, 1.0); // double distribution
+    for (int64_t i = 0; i < other.size(); ++i) {
+        random_data[i] = static_cast<T>(dis(gen)); // Ensure type T
+    }
+    return Tensor(other.get_shape(), random_data, dtype);
+}
 
+Tensor rand_like(const Tensor& other, const Dtype& dtype) {
     std::random_device rd;
     std::mt19937 gen(rd()); // Mersenne Twister generator
 
-    if (dtype == Dtype::Float32) {
-        std::uniform_real_distribution<float> dis(0.0f, 1.0f); // Float distribution
-        for (int64_t i = 0; i < other.size(); ++i) {
-            random_data[i] = static_cast<double>(dis(gen)); // Cast float to double
-        }
-    } else if (dtype == Dtype::Float64) {
-        std::uniform_real_distribution<double> dis(0.0, 1.0); // Double distribution
-        for (int64_t i = 0; i < other.size(); ++i) {
-            random_data[i] = dis(gen); // No cast needed for double
-        }
-    } else if (dtype == Dtype::Int32) {
-        std::uniform_int_distribution<int32_t> dis(0, 100); // Int32 distribution
-        for (int64_t i = 0; i < other.size(); ++i) {
-            random_data[i] = static_cast<double>(dis(gen)); // Cast int to double
-        }
-    } else if (dtype == Dtype::Int64) {
-        std::uniform_int_distribution<int64_t> dis(0, 100); // Int64 distribution
-        for (int64_t i = 0; i < other.size(); ++i) {
-            random_data[i] = static_cast<double>(dis(gen)); // Cast int to double
-        }
-    } else {
+    switch (dtype)
+    {
+    case Dtype::Float32:
+        return generate_random_data<float>(other, dtype, gen);
+        break;
+    case Dtype::Float64:
+        return generate_random_data<double>(other, dtype, gen);
+        break;
+    case Dtype::Int32:
+        return generate_random_data<int32_t>(other, dtype, gen);
+        break;
+    case Dtype::Int64:
+        return generate_random_data<int64_t>(other, dtype, gen);
+        break;
+    default:
         throw std::invalid_argument("Unsupported dtype provided");
+        break;
     }
-
-    return Tensor(other.get_shape(), random_data, dtype);
 }
 
 Tensor rand(const py::tuple& shape, const Dtype& dtype) {
