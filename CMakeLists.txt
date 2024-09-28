@@ -31,6 +31,22 @@ message(STATUS "Python3_EXECUTABLE: ${Python3_EXECUTABLE}")
 message(STATUS "Python3_INCLUDE_DIRS: ${Python3_INCLUDE_DIRS}")
 message(STATUS "Python3_LIBRARIES: ${Python3_LIBRARIES}")
 
+# Add this before calling find_package(OpenCL)
+if (WIN32)
+    # Set this variable to the actual path where your OpenCL SDK is located
+    set(OPENCL_ROOT "C:/OpenCL-SDK")  # Replace with your actual path
+
+    set(OpenCL_INCLUDE_DIR "${OPENCL_ROOT}/include")
+    set(OpenCL_LIBRARY "${OPENCL_ROOT}/lib/OpenCL.lib")
+endif()
+
+find_package(OpenCL REQUIRED)
+if(NOT OpenCL_FOUND)
+  message(FATAL_ERROR "OpenCL not found. Please install OpenCL SDK and drivers.")
+endif()
+
+message(STATUS "OpenCL_INCLUDE_DIR: ${OpenCL_INCLUDE_DIR}")
+message(STATUS "OpenCL_LIBRARY: ${OpenCL_LIBRARY}")
 
 # Add Tensor source files (modify path if necessary)
 set(TENSOR_SRC csrc/MyTensor.cpp csrc/utils.cpp csrc/Proxy.cpp csrc/helpers.cpp)
@@ -66,6 +82,7 @@ target_include_directories(
   test_tensor PRIVATE
   ${CMAKE_SOURCE_DIR}/csrc/include   # Ensure this points to where MyTensor.h is located
   ${Python3_INCLUDE_DIRS}  # Include Python headers
+  ${OpenCL_INCLUDE_DIR}            # OpenCL headers
 )
 
 target_link_libraries(
@@ -73,6 +90,7 @@ target_link_libraries(
   GTest::gtest_main
   pybind11::module
   ${Python3_LIBRARIES} # Python libraries
+  ${OpenCL_LIBRARY}   # OpenCL libraries
 )
 
 include(GoogleTest)
