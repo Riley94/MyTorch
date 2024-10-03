@@ -1,5 +1,6 @@
 #pragma once
 #define CL_TARGET_OPENCL_VERSION 300
+#define CL_HPP_TARGET_OPENCL_VERSION 300
 
 #include <iostream>
 #include <sstream>
@@ -8,6 +9,9 @@
 #include <cstdint>
 #include <vector>
 #include <variant>
+#include <CL/cl.h>
+#include <CL/opencl.hpp>
+#include "DeviceType.h"
 #include "helpers.h"
 #include "Proxy.h"
 #include "pybind_includes.h"
@@ -24,30 +28,32 @@ private:
     std::vector<int64_t> shape; // Shape of the tensor
     tensorData data; // Data of the tensor
     Dtype dtype;
+    DeviceType device; // Device where the tensor is stored
 
     bool has_determined_dtype = false; // Flag to check if dtype is already set in the parseList function
 
+    mutable cl::Buffer clBuffer;
 public:
 
     /* ------------------- Constructors ------------------- */
     // Default constructor
-    Tensor() : shape({}), dtype(Dtype::Float64) {}
+    Tensor() : shape({}), dtype(Dtype::Float64), device(DeviceType::CPU) {}
     
     // Constructor to initialize the tensor with a given shape and fill it with zeros
-    Tensor(const std::vector<int64_t>& shape);
+    Tensor(const std::vector<int64_t>& shape, DeviceType device = DeviceType::CPU);
 
     // Constructor to initialize the tensor with a given shape and data
-    Tensor(const std::vector<int64_t>& shape, const std::initializer_list<double>& values);
+    Tensor(const std::vector<int64_t>& shape, const std::initializer_list<double>& values, DeviceType device = DeviceType::CPU);
 
     // Constructor to initialize the tensor with a given shape and type
-    Tensor(const std::vector<int64_t>& shape, Dtype dtype);
+    Tensor(const std::vector<int64_t>& shape, Dtype dtype, DeviceType device = DeviceType::CPU);
 
     // accepting vectors
     template <typename T>
-    Tensor(const std::vector<int64_t>& shape, const std::vector<T>& dataVec, Dtype dtype);
+    Tensor(const std::vector<int64_t>& shape, const std::vector<T>& dataVec, Dtype dtype, DeviceType device = DeviceType::CPU);
 
     // python objects
-    Tensor(const py::object& obj);
+    Tensor(const py::object& obj, const Dtype& dtype=Dtype::Float64, const DeviceType& device = DeviceType::CPU);
 
     /* --------------------- Operators --------------------- */
 
@@ -94,6 +100,9 @@ public:
 
     //Tensor outer_product(const Tensor& other) const;
 
+    void ensureOnDevice() const;
+    void readFromDevice();
+
     /* --------------------- Conversion --------------------- */
 
     //Tensor slice(const py::object& row_obj, const py::object& col_obj) const;
@@ -107,12 +116,17 @@ public:
     // Print tensor elements
     std::string repr() const;
 
+    std::string get_device_str() const {
+        return device == DeviceType::CPU ? "cpu" : "gpu";
+    }
+
     /* ---------------------- Getters ---------------------- */
 
     // simple getters
     std::vector<int64_t> get_shape() const { return shape; }
     Dtype get_dtype() const { return dtype; }
     tensorData get_data() const { return data; }
+    DeviceType get_device() const { return device; }
     
     // Get the number of elements in the tensor
     int64_t size() const;
@@ -120,9 +134,18 @@ public:
     // Getter for item at index
     py::object getItem(int64_t index) const;
 
+    // Accessor for clBuffer (const version)
+    cl::Buffer& get_clBuffer() const {
+        ensureOnDevice(); // Ensure the buffer is on the device
+        return clBuffer;
+    }
+
     /* ---------------------- Setters ---------------------- */
 
     // simple setters
+    void set_shape(const std::vector<int64_t>& new_shape) { shape = new_shape; }
+    void set_dtype(Dtype new_dtype) { dtype = new_dtype; }
+    void set_device(DeviceType new_device) { device = new_device; }
     void set_data(const tensorData& other_data) { this->data = std::move(other_data); }
 
     template <typename T>
@@ -134,19 +157,19 @@ public:
 private:
     // Helper function to print the tensor elements recursively
     void printRecursive(std::ostream& os, const std::vector<int64_t>& indices, size_t dim) const;
-    // Helper function to parse a Python list and initialize the tensor
-    void parseList(const py::list& list);
     // Computes the total number of elements in the tensor based on its shape
     int64_t getFlatIndex(const std::vector<int64_t>& indices) const;
     template <typename T>
     py::array_t<T> numpy_impl() const;
+    // parse a list of lists to initialize a tensor
+    void parseList(const py::list& list);
     
 };
 
 // had to define here due to linker error
 template <typename T>
-Tensor::Tensor(const std::vector<int64_t>& shape, const std::vector<T>& dataVec, Dtype dtype)
-    : shape(shape), dtype(dtype) {
+Tensor::Tensor(const std::vector<int64_t>& shape, const std::vector<T>& dataVec, Dtype dtype, DeviceType device)
+    : shape(shape), dtype(dtype), device(device) {
     // Ensure that T is one of the allowed types
     static_assert(
         std::is_same_v<T, double> ||

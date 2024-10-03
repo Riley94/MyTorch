@@ -3,22 +3,24 @@
 #include <functional>
 
 #include "MyTensor.h"
+#include "OpenCLManager.h"
 #include "pybind_includes.h"
 
 namespace mytorch {
 
-Tensor::Tensor(const std::vector<int64_t>& shape) : shape(shape) {
+Tensor::Tensor(const std::vector<int64_t>& shape, DeviceType device) : shape(shape), device(device) {
     int64_t totalSize = numElements(shape);
     data = std::vector<double>(totalSize, 0.0); // Initialize all elements to zero
 }
 
-Tensor::Tensor(const std::vector<int64_t>& shape, const std::initializer_list<double>& values) : shape(shape) {
+Tensor::Tensor(const std::vector<int64_t>& shape, const std::initializer_list<double>& values, DeviceType device) : shape(shape), device(device) {
     int64_t totalSize = numElements(shape);
     assert(static_cast<int64_t>(values.size()) == totalSize);
     data = values;
 }
 
-Tensor::Tensor(const std::vector<int64_t>& shape, Dtype dtype) : shape(shape), dtype(dtype) {
+Tensor::Tensor(const std::vector<int64_t>& shape, Dtype dtype, DeviceType device) 
+                                        : shape(shape), dtype(dtype), device(device) {
     int64_t totalSize = numElements(shape);
     switch (dtype) {
     case Dtype::Float32:
@@ -39,9 +41,10 @@ Tensor::Tensor(const std::vector<int64_t>& shape, Dtype dtype) : shape(shape), d
 }
 
 void Tensor::parseList(const py::list& list) {
-    Dtype max_dtype = Dtype::Int64; // Default to Int64
     std::vector<int64_t> flat_data_int64;
     std::vector<double> flat_data_double;
+    std::vector<float> flat_data_float;
+    std::vector<int32_t> flat_data_int32;
     std::vector<int64_t> inferred_shape;
 
     std::function<void(const py::list&, size_t)> parse_helper;
@@ -58,25 +61,21 @@ void Tensor::parseList(const py::list& list) {
             if (py::isinstance<py::list>(item)) {
                 parse_helper(item.cast<py::list>(), depth + 1);
             }
-            else if (py::isinstance<py::float_>(item)) {
-                double val = item.cast<double>();
-                if (max_dtype != Dtype::Float64) {
-                    // Promote existing int64 data to double
-                    for (const auto& int_val : flat_data_int64) {
-                        flat_data_double.push_back(static_cast<double>(int_val));
-                    }
-                    flat_data_int64.clear();
-                    max_dtype = Dtype::Float64;
-                }
-                flat_data_double.push_back(val);
+            else if (dtype == Dtype::Float32) {
+                float val = item.cast<float>();
+                flat_data_float.push_back(static_cast<float>(val));
             }
-            else if (py::isinstance<py::int_>(item)) {
+            else if (dtype == Dtype::Float64) {
+                double val = item.cast<double>();
+                flat_data_double.push_back(static_cast<double>(val));
+            }
+            else if (dtype == Dtype::Int32) {
+                int32_t val = item.cast<int32_t>();
+                flat_data_int32.push_back(static_cast<int32_t>(val));
+            }
+            else if (dtype == Dtype::Int64) {
                 int64_t val = item.cast<int64_t>();
-                if (max_dtype == Dtype::Float64) {
-                    flat_data_double.push_back(static_cast<double>(val));
-                } else {
-                    flat_data_int64.push_back(val);
-                }
+                flat_data_int64.push_back(static_cast<int64_t>(val));
             }
             else {
                 throw std::invalid_argument("Unsupported data type in list for Tensor initialization.");
@@ -89,27 +88,38 @@ void Tensor::parseList(const py::list& list) {
 
     // Set the shape
     shape = inferred_shape;
-
-    // Assign data based on max_dtype
-    if (max_dtype == Dtype::Float64) {
-        dtype = Dtype::Float64;
-        data = std::move(flat_data_double);
-    } else {
-        dtype = Dtype::Int64;
-        data = std::move(flat_data_int64);
+    
+    switch (dtype)
+    {
+    case Dtype::Float32:
+        set_data(flat_data_float);
+        break;
+    case Dtype::Float64:
+        set_data(flat_data_double);
+        break;
+    case Dtype::Int32:
+        set_data(flat_data_int32);
+        break;
+    case Dtype::Int64:
+        set_data(flat_data_int64);
+        break;
+    default:
+        throw std::invalid_argument("Unsupported dtype provided");
+        break;
     }
 }
 
 // Python objects
-Tensor::Tensor(const py::object& obj) {
+Tensor::Tensor(const py::object& obj, const Dtype& dtype, const DeviceType& device) 
+    : dtype(dtype), device(device) {
+
     // Handle case where a list is passed
     if (py::isinstance<py::list>(obj)) {
         auto list = obj.cast<py::list>();
         if (list.empty()) {
             // Handle empty tensor initialization
-            shape = {};
-            data = {};
-            dtype = Dtype::Float64; // default is double
+            this->shape = {};
+            this->data = {};
         } else {
             parseList(list);
         }
@@ -122,33 +132,38 @@ Tensor::Tensor(const py::object& obj) {
         // Extract shape information
         shape = std::vector<int64_t>(buffer.shape.begin(), buffer.shape.end());
 
-        // Determine dtype based on buffer.format
-        if (buffer.format == py::format_descriptor<double>::format()) {
-            dtype = Dtype::Float64;
-            std::vector<double> tensor_data(reinterpret_cast<double*>(buffer.ptr),
-                                            reinterpret_cast<double*>(buffer.ptr) + buffer.size);
-            data = std::move(tensor_data);
-        }
-        else if (buffer.format == py::format_descriptor<float>::format()) {
-            dtype = Dtype::Float32;
-            std::vector<float> tensor_data(reinterpret_cast<float*>(buffer.ptr),
-                                           reinterpret_cast<float*>(buffer.ptr) + buffer.size);
-            data = std::move(tensor_data);
-        }
-        else if (buffer.format == py::format_descriptor<int64_t>::format()) {
-            dtype = Dtype::Int64;
-            std::vector<int64_t> tensor_data(reinterpret_cast<int64_t*>(buffer.ptr),
-                                             reinterpret_cast<int64_t*>(buffer.ptr) + buffer.size);
-            data = std::move(tensor_data);
-        }
-        else if (buffer.format == py::format_descriptor<int32_t>::format()) {
-            dtype = Dtype::Int32;
-            std::vector<int32_t> tensor_data(reinterpret_cast<int32_t*>(buffer.ptr),
-                                             reinterpret_cast<int32_t*>(buffer.ptr) + buffer.size);
-            data = std::move(tensor_data);
-        }
-        else {
-            throw std::invalid_argument("Unsupported NumPy array data type for Tensor initialization.");
+        switch (dtype)
+        {
+        case Dtype::Float32:
+            {
+                std::vector<float> tensor_data(reinterpret_cast<float*>(buffer.ptr),
+                                                reinterpret_cast<float*>(buffer.ptr) + buffer.size);
+                set_data(tensor_data);
+                break;
+            }
+        case Dtype::Float64:
+            {  
+                std::vector<double> tensor_data(reinterpret_cast<double*>(buffer.ptr),
+                                                reinterpret_cast<double*>(buffer.ptr) + buffer.size);
+                set_data(tensor_data);
+                break;
+            }
+        case Dtype::Int32:
+            {
+                std::vector<int32_t> tensor_data(reinterpret_cast<int32_t*>(buffer.ptr),
+                                                reinterpret_cast<int32_t*>(buffer.ptr) + buffer.size);
+                set_data(tensor_data);
+                break;
+            }
+        case Dtype::Int64:
+            {
+                std::vector<int64_t> tensor_data(reinterpret_cast<int64_t*>(buffer.ptr),
+                                                reinterpret_cast<int64_t*>(buffer.ptr) + buffer.size);
+                set_data(tensor_data);
+                break;
+            }
+        default:
+            throw std::invalid_argument("Unsupported dtype provided");
         }
     }
     else {
@@ -192,6 +207,102 @@ void apply_elementwise_operation(Tensor& result, const auto& lhs_data, const aut
     result.set_data(result_data);
 }
 
+std::string generateElementwiseKernel(const std::string& op_name, Dtype dtype) {
+    std::string typeStr;
+    switch (dtype) {
+        case Dtype::Float64:
+            typeStr = "double";
+            break;
+        case Dtype::Float32:
+            typeStr = "float";
+            break;
+        case Dtype::Int64:
+            typeStr = "long";
+            break;
+        case Dtype::Int32:
+            typeStr = "int";
+            break;
+        default:
+            throw std::runtime_error("Unsupported data type for OpenCL kernel generation");
+    }
+
+    std::string operation;
+    if (op_name == "addition") {
+        operation = "lhs[i] + rhs[i]";
+    } else if (op_name == "subtraction") {
+        operation = "lhs[i] - rhs[i]";
+    } else if (op_name == "multiplication") {
+        operation = "lhs[i] * rhs[i]";
+    } else if (op_name == "division") {
+        operation = "lhs[i] / rhs[i]";
+    } else {
+        throw std::runtime_error("Unsupported operation for OpenCL kernel generation");
+    }
+
+    std::string kernelCode = R"(
+    __kernel void elementwise_op(__global const TYPE* lhs, __global const TYPE* rhs, __global TYPE* result) {
+        int i = get_global_id(0);
+        result[i] = OPERATION;
+    }
+    )";
+
+    // Replace placeholders
+    size_t pos;
+    while ((pos = kernelCode.find("TYPE")) != std::string::npos) {
+        kernelCode.replace(pos, 4, typeStr);
+    }
+    while ((pos = kernelCode.find("OPERATION")) != std::string::npos) {
+        kernelCode.replace(pos, 9, operation);
+    }
+
+    return kernelCode;
+}
+
+void perform_opencl_elementwise_op(const Tensor& lhs, const Tensor& rhs, Tensor& result, const std::string& op_name) {
+    // Ensure tensors are on the device
+    lhs.ensureOnDevice();
+    rhs.ensureOnDevice();
+    result.ensureOnDevice();
+
+    auto& context = OpenCLManager::getInstance().getContext(); // using GPU as default
+    auto& queue = OpenCLManager::getInstance().getQueue(); // using GPU as default
+
+    // Define the OpenCL kernel code
+    std::string kernelCode = generateElementwiseKernel(op_name, result.get_dtype());
+
+    // Build the OpenCL program
+    cl::Program::Sources sources;
+    sources.push_back({kernelCode.c_str(), kernelCode.length()});
+
+    cl::Program program(context, sources);
+    try {
+        program.build();
+    } catch (const cl::Error& e) {
+        // Print build errors
+        std::string buildLog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(context.getInfo<CL_CONTEXT_DEVICES>()[0]);
+        std::cerr << "Error building OpenCL program: " << e.what() << "(" << e.err() << ")\n";
+        std::cerr << "Build log:\n" << buildLog << "\n";
+        throw;
+    }
+
+    // Create the kernel
+    cl::Kernel kernel(program, "elementwise_op");
+
+    // Set kernel arguments
+    kernel.setArg(0, lhs.get_clBuffer());
+    kernel.setArg(1, rhs.get_clBuffer());
+    kernel.setArg(2, result.get_clBuffer());
+
+    // Execute the kernel
+    size_t globalSize = lhs.size();  // Total number of elements
+    cl::NDRange global(globalSize);
+
+    queue.enqueueNDRangeKernel(kernel, cl::NullRange, global, cl::NullRange);
+
+    // Optionally wait for completion
+    queue.finish();
+}
+
 template<typename Op>
 Tensor elementwise_binary_op(const Tensor& lhs, const Tensor& rhs, Op op, const std::string& op_name) {
     if (lhs.get_shape() != rhs.get_shape()) {
@@ -215,27 +326,35 @@ Tensor elementwise_binary_op(const Tensor& lhs, const Tensor& rhs, Op op, const 
 
     Tensor result(lhs.get_shape(), result_dtype);
 
-    auto operationLambda = [&](const auto& lhs_data, const auto& rhs_data) {
-        switch (result_dtype) {
-            case Dtype::Float64:
-                apply_elementwise_operation<double>(result, lhs_data, rhs_data, op, is_division);
-                break;
-            case Dtype::Float32:
-                apply_elementwise_operation<float>(result, lhs_data, rhs_data, op, is_division);
-                break;
-            case Dtype::Int64:
-                apply_elementwise_operation<int64_t>(result, lhs_data, rhs_data, op, is_division);
-                break;
-            case Dtype::Int32:
-                apply_elementwise_operation<int32_t>(result, lhs_data, rhs_data, op, is_division);
-                break;
-            default:
-                throw std::runtime_error("Unsupported data type for " + op_name);
-        }
-    };
-
-    std::visit(operationLambda, lhs.get_data(), rhs.get_data());
-
+    // Check if computation should be on GPU
+    if (lhs.get_device() == DeviceType::GPU && rhs.get_device() == DeviceType::GPU) {
+        // Perform computation using OpenCL
+        result.set_device(DeviceType::GPU);
+        perform_opencl_elementwise_op(lhs, rhs, result, op_name);
+    } else {
+        // Perform computation on CPU
+        auto operationLambda = [&](const auto& lhs_data, const auto& rhs_data) {
+            switch (result_dtype) {
+                case Dtype::Float64:
+                    apply_elementwise_operation<double>(result, lhs_data, rhs_data, op, is_division);
+                    break;
+                case Dtype::Float32:
+                    apply_elementwise_operation<float>(result, lhs_data, rhs_data, op, is_division);
+                    break;
+                case Dtype::Int64:
+                    apply_elementwise_operation<int64_t>(result, lhs_data, rhs_data, op, is_division);
+                    break;
+                case Dtype::Int32:
+                    apply_elementwise_operation<int32_t>(result, lhs_data, rhs_data, op, is_division);
+                    break;
+                default:
+                    throw std::runtime_error("Unsupported data type for " + op_name);
+            }
+        };
+        std::visit(operationLambda, lhs.get_data(), rhs.get_data());
+    }
+    
+    result.readFromDevice();
     return result;
 }
 
@@ -468,6 +587,68 @@ void Tensor::setItem(int64_t index, py::object value) {
             throw std::runtime_error("Type mismatch in assignment. " + std::string(e.what()));
         }
     }, data);
+}
+
+void Tensor::ensureOnDevice() const {
+    if (!clBuffer()) {
+        auto& context = OpenCLManager::getInstance().getContext();
+
+        // Variables to hold data pointer and size
+        void* data_ptr = nullptr;
+        size_t data_size = 0;
+
+        // Use std::visit to handle the variant
+        std::visit([&](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            // Check if arg is a vector
+            static_assert(std::is_same_v<T, std::vector<float>> || 
+                      std::is_same_v<T, std::vector<int64_t>> ||
+                      std::is_same_v<T, std::vector<double>> ||
+                      std::is_same_v<T, std::vector<int32_t>>,
+                          "Unsupported data type");
+
+            data_ptr = (void*)arg.data();  // Obtain data pointer
+
+            // Calculate data size in bytes
+            data_size = sizeof(typename T::value_type) * arg.size();
+
+        }, data);
+
+        // Create the OpenCL buffer
+        cl_int err = CL_SUCCESS;
+        clBuffer = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, // Memory flags indicating read/write access and that the buffer should be initialized from host memory
+                              data_size, data_ptr, &err);
+        if (err != CL_SUCCESS) {
+            throw std::runtime_error("Failed to create OpenCL buffer.");
+        }
+    }
+}
+
+void Tensor::readFromDevice() {
+    auto& queue = OpenCLManager::getInstance().getQueue();
+
+    void* data_ptr = nullptr;
+    size_t data_size = 0;
+
+    // Use std::visit to obtain data pointer and size
+    std::visit([&](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        static_assert(std::is_same_v<T, std::vector<float>> || 
+                      std::is_same_v<T, std::vector<int64_t>> ||
+                      std::is_same_v<T, std::vector<double>> ||
+                      std::is_same_v<T, std::vector<int32_t>>,
+                      "Unsupported data type");
+
+        data_ptr = (void*)arg.data();
+        data_size = sizeof(typename T::value_type) * arg.size();
+
+    }, data);
+
+    // Enqueue read buffer command
+    cl_int err = queue.enqueueReadBuffer(clBuffer, CL_TRUE, 0, data_size, data_ptr);
+    if (err != CL_SUCCESS) {
+        throw std::runtime_error("Failed to read from OpenCL buffer.");
+    }
 }
 
 } // namespace mytorch

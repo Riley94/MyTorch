@@ -199,6 +199,27 @@ TEST_F(TensorTest, NumpyConversion) {
     }
 }
 
+TEST_F(TensorTest, GPUMath) {
+    // Create tensors on the GPU
+    Tensor tensorA({1000}, Dtype::Float64, DeviceType::GPU);
+    Tensor tensorB({1000}, Dtype::Float64, DeviceType::GPU);
+
+    // Initialize data
+    std::vector<double> dataA(1000, 1.0);
+    std::vector<double> dataB(1000, 2.0);
+    tensorA.set_data(dataA);
+    tensorB.set_data(dataB);
+
+    // Perform addition on the GPU
+    Tensor result = tensorA + tensorB;
+
+    // Read result back to host if needed
+    result.readFromDevice();
+
+    std::vector<double> expectedData(1000, 3.0);
+    checkData(result, expectedData, "addition on GPU", Dtype::Float64);
+}
+
 // Test Empty Tensor Initialization
 /* TEST_F(TensorTest, TensorInit) {
     py::scoped_interpreter guard{}; // Initialize Python interpreter

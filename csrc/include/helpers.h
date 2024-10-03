@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <iostream>
+#include "Dtype.h"
 #include "pybind_includes.h"
 
 namespace mytorch {
@@ -10,13 +11,6 @@ namespace mytorch {
 // Helper template to trigger static_assert
 template <typename>
 inline constexpr bool always_false = false;
-
-enum class Dtype {
-    Float32,
-    Float64,
-    Int32,
-    Int64
-};
 
 template <Dtype dtype>
 struct DtypeToCppType;

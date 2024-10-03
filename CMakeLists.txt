@@ -49,7 +49,7 @@ message(STATUS "OpenCL_INCLUDE_DIR: ${OpenCL_INCLUDE_DIR}")
 message(STATUS "OpenCL_LIBRARY: ${OpenCL_LIBRARY}")
 
 # Add Tensor source files (modify path if necessary)
-set(TENSOR_SRC csrc/MyTensor.cpp csrc/utils.cpp csrc/Proxy.cpp csrc/helpers.cpp)
+set(TENSOR_SRC csrc/MyTensor.cpp csrc/utils.cpp csrc/Proxy.cpp csrc/helpers.cpp csrc/OpenCLManager.cpp)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -80,7 +80,7 @@ add_executable(
 # Add include directories for your project
 target_include_directories(
   test_tensor PRIVATE
-  ${CMAKE_SOURCE_DIR}/csrc/include   # Ensure this points to where MyTensor.h is located
+  ${CMAKE_SOURCE_DIR}/csrc/include
   ${Python3_INCLUDE_DIRS}  # Include Python headers
   ${OpenCL_INCLUDE_DIR}            # OpenCL headers
 )
@@ -91,6 +91,13 @@ target_link_libraries(
   pybind11::module
   ${Python3_LIBRARIES} # Python libraries
   ${OpenCL_LIBRARY}   # OpenCL libraries
+)
+
+target_compile_definitions(
+  test_tensor PRIVATE
+  CL_TARGET_OPENCL_VERSION=300
+  CL_HPP_TARGET_OPENCL_VERSION=300
+  CL_HPP_ENABLE_EXCEPTIONS
 )
 
 include(GoogleTest)
