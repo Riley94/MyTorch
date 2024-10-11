@@ -2,6 +2,8 @@
 
 MyTorch is intended as an educational project for myself wherein I attempt to reimpliment the PyTorch library functionalities for ML. I intend to implement everything from the Tensor object (partially complete) all the way to the NN functionality and optimizers. Most functionality will be written in C++ for efficiency, but just like PyTorch it will be exposed to Python using pybind11.
 
+Note: Attention towards Windows compatibility on-hold, due to issues with installing some dependencies. Will address at a later date. In other words, the Windows build will not work as-is.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -74,17 +76,19 @@ For testing you will need:
     pip install --upgrade numpy pybind11 torch graphviz build
     ```
 
-    Install OpenCL SDK (new):
+    Install OpenCL SDK and OpenCV:
 
     On Linux:
     ```bash
-    sudo apt install opencl-headers ocl-icd-opencl-dev -y
+    sudo apt install opencl-headers ocl-icd-opencl-dev libopencv-dev
     ```
 
     On Windows:
     1. Get the latest release from https://github.com/KhronosGroup/OpenCL-SDK
     2. Extract contents to C:\OpenCL-SDK
     3. May need to add path to system environment variables
+  
+    Note: To view device information on Linux, use clinfo (sudo apt install clinfo). You will need to make sure            your GPU driver supports OpenCL (this may require installing a different driver). If you have a cpu              that supports OpenCL, you will also need the correct runtime libraries. AMD doesn't officially support           OpenCL on their newer CPUs, but I am using the Intel CPU runtime (intel base-kit), which seems to work           fine.
     
 
 6. **Build the Project**:
